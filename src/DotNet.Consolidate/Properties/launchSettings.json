@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DotNet.Consolidate": {
+      "commandName": "Project",
+      "commandLineArgs": "-s c:\\Projects\\river-web\\src\\River.Web.sln c:\\Projects\\iptv-admin\\IPTVAdmin.sln c:\\Projects\\vmedia-web\\src\\VMedia.Web.sln"
+    }
+  }
+}
