@@ -9,6 +9,7 @@ var projectName = "DotNet.Consolidate";
 var projectFolder = string.Format("./src/{0}/", projectName);
 var solutionFile = string.Format("./src/{0}.sln", projectName);
 var projectFile = string.Format("./src/{0}/{0}.csproj", projectName);
+var nuGetPackageId = "dotnet-consolidate";
 
 var extensionsVersion = XmlPeek(projectFile, "Project/PropertyGroup[1]/VersionPrefix/text()");
 
@@ -69,7 +70,7 @@ Task("CreateArtifact")
   .WithCriteria(BuildSystem.AppVeyor.IsRunningOnAppVeyor)
   .Does(() =>
 {
-    BuildSystem.AppVeyor.UploadArtifact(string.Format("{0}.{1}.nupkg", projectName, extensionsVersion));
+    BuildSystem.AppVeyor.UploadArtifact(string.Format("{0}.{1}.nupkg", nuGetPackageId, extensionsVersion));
 });
 
 Task("Default")
