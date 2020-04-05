@@ -37,11 +37,10 @@ Task("SonarBegin")
      SonarBegin(new SonarBeginSettings {
         Url = "https://sonarcloud.io",
         Login = EnvironmentVariable("sonar:apikey"),
-        Key = "dotnet-reqube",
-        Name = "dotnet reqube",
+        Key = "dotnet-consolidate",
+        Name = "dotnet consolidate",
         ArgumentCustomization = args => args
-            .Append("/o:olsh-github")
-            .Append("/d:sonar.externalIssuesReportPaths=sonarqube-report.json"),
+            .Append("/o:olsh-github"),
         Version = extensionsVersion
      });
   });
