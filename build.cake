@@ -1,14 +1,16 @@
 #tool nuget:?package=MSBuild.SonarQube.Runner.Tool&version=4.8.0
 
-#addin nuget:?package=Cake.Sonar&version=1.1.22
+#addin nuget:?package=Cake.Sonar&version=1.1.25
 
 var target = Argument("target", "Default");
 
 var buildConfiguration = "Release";
 var projectName = "DotNet.Consolidate";
+var testProjectName = "DotNet.Consolidate.Tests";
 var projectFolder = string.Format("./src/{0}/", projectName);
 var solutionFile = string.Format("./src/{0}.sln", projectName);
 var projectFile = string.Format("./src/{0}/{0}.csproj", projectName);
+var testProjectFile = string.Format("./src/{0}/{0}.csproj", testProjectName);
 var nuGetPackageId = "dotnet-consolidate";
 
 var extensionsVersion = XmlPeek(projectFile, "Project/PropertyGroup[1]/VersionPrefix/text()");
@@ -31,6 +33,18 @@ Task("Build")
     };
 
     DotNetCoreBuild(solutionFile, settings);
+});
+
+Task("Test")
+  .IsDependentOn("Build")
+  .Does(() =>
+{
+     var settings = new DotNetCoreTestSettings
+     {
+         Configuration = buildConfiguration
+     };
+
+     DotNetCoreTest(testProjectFile, settings);
 });
 
 Task("SonarBegin")
@@ -79,6 +93,7 @@ Task("Default")
 Task("Sonar")
   .IsDependentOn("SonarBegin")
   .IsDependentOn("Build")
+  .IsDependentOn("Test")
   .IsDependentOn("SonarEnd");
 
 Task("CI")
