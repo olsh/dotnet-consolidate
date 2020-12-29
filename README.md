@@ -26,7 +26,14 @@ or multiple solutions
 
 `dotnet consolidate -s YourSolution.sln AnotherSolution.sln`
 
-If the tool finds discrepancies between projects, it exits with non-success status code and prints these discrepancies.
+You can also optionally specify the a package id if you want only a single package to be consolidated
+`dotnet consolidate -s YourSolution.sln -p PackageId`
+
+or a list of package ids if you want to consolidate multiple, but not all which are referenced in the solution projects
+
+`dotnet consolidate -s YourSolution.sln -p PackageId1 PackageId2`
+
+If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
 ## Examples
 
