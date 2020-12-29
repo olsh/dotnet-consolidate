@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -39,7 +39,12 @@ namespace DotNet.Consolidate
             {
                 logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
 
+                var packagesDefined = options.PackageIds?.Any() ?? false;
                 var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos);
+                if (packagesDefined)
+                {
+                    nonConsolidatedPackages = nonConsolidatedPackages.Where(p => options.PackageIds!.Contains(p.NuGetPackageId)).ToList();
+                }
 
                 logger.WriteAnalysisResults(nonConsolidatedPackages);
 
@@ -49,7 +54,8 @@ namespace DotNet.Consolidate
                 }
                 else
                 {
-                    logger.Message($"All packages in {solutionInfo.SolutionFile} are consolidated.");
+                    var packageList = packagesDefined ? $"from the list {string.Join(Environment.NewLine, options.PackageIds!)} " : string.Empty;
+                    logger.Message($"All packages {packagesDefined}in {solutionInfo.SolutionFile} are consolidated.");
                 }
             }
         }
