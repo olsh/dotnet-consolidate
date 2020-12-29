@@ -9,7 +9,7 @@
 
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dotnet-consolidate</ToolCommandName>
-    <VersionPrefix>1.1.0</VersionPrefix>
+    <VersionPrefix>1.2.0</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup>
