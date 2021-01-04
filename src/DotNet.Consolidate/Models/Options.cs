@@ -13,7 +13,7 @@ namespace DotNet.Consolidate.Models
         }
 
         [Option('p', "pacakgeIds", Required = false, HelpText = "Package IDs to check consolidation.")]
-        public ICollection<string> PackageIds { get; }
+        public ICollection<string>? PackageIds { get; }
 
         [Option('s', "solutions", Required = true, HelpText = "Target solution for consolidation.")]
         public ICollection<string> Solutions { get; }

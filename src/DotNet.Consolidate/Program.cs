@@ -39,33 +39,11 @@ namespace DotNet.Consolidate
             {
                 logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
 
-                var packagesDefined = options.PackageIds?.Any() ?? false;
-                var argumentPackageIds = options.PackageIds!;
-                var solutionPackageIds = solutionInfo.ProjectInfos.SelectMany(x => x.Packages.Select(p => p.Id));
-                var packageIdsInArgumentNotInSolution = argumentPackageIds.Where(a => !solutionPackageIds.Contains(a)).ToList();
-
-                var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos);
-                if (packagesDefined)
-                {
-                    nonConsolidatedPackages = nonConsolidatedPackages.Where(p => argumentPackageIds.Contains(p.NuGetPackageId)).ToList();
-                }
-
-                logger.WriteAnalysisResults(nonConsolidatedPackages);
-
-                if (packageIdsInArgumentNotInSolution.Any())
-                {
-                    logger.Message("The following package IDs given for consolidation check were not found in the solution projects:");
-                    logger.Message(string.Join(Environment.NewLine, packageIdsInArgumentNotInSolution));
-                }
-
+                var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
+                logger.WriteAnalysisResults(nonConsolidatedPackages, solutionInfo, options);
                 if (nonConsolidatedPackages.Any())
                 {
                     Environment.ExitCode = 1;
-                }
-                else
-                {
-                    var packageList = packagesDefined ? $"from the list {string.Join(Environment.NewLine, argumentPackageIds)} " : string.Empty;
-                    logger.Message($"All packages {packageList}in {solutionInfo.SolutionFile} are consolidated.");
                 }
             }
         }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 
 using DotNet.Consolidate.Models;
@@ -7,7 +7,7 @@ namespace DotNet.Consolidate.Services
 {
     public class PackagesAnalyzer
     {
-        public List<AnalysisResult> FindNonConsolidatedPackages(ICollection<ProjectInfo> projectInfos)
+        public List<AnalysisResult> FindNonConsolidatedPackages(ICollection<ProjectInfo> projectInfos, Options options)
         {
             var analysisResults = new Dictionary<string, AnalysisResult>();
             foreach (var projectInfo in projectInfos)
@@ -24,7 +24,13 @@ namespace DotNet.Consolidate.Services
                 }
             }
 
-            return analysisResults.Values.Where(r => r.ContainsDifferentPackagesVersions).ToList();
+            var nonConsolidatedPackages = analysisResults.Values.Where(r => r.ContainsDifferentPackagesVersions);
+            if (options.PackageIds?.Any() == true)
+            {
+                return nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
+            }
+
+            return nonConsolidatedPackages.ToList();
         }
     }
 }

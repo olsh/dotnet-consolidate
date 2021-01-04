@@ -21,9 +21,13 @@ dotnet_diagnostic.SA1602.severity = none
 # SA1633: File should have header
 dotnet_diagnostic.SA1633.severity = none
 
+dotnet_sort_system_directives_first = true
+
+dotnet_separate_import_directive_groups = true
+
 indent_size = 4
 
-[*.csproj, *.json, *.yml]
+[{*.csproj,*.json,*.yml}]
 
 indent_size = 2
 
@@ -39,3 +43,4 @@ indent_style = space
 insert_final_newline = true
 
 trim_trailing_whitespace = true
+
