@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 
@@ -39,6 +39,7 @@ namespace DotNet.Consolidate.Services
 
             try
             {
+                filePath = PathUtils.EnsureSystemSeparator(filePath);
                 var solution = SolutionParser.Parse(filePath);
 
                 var solutionDirectory = Path.GetDirectoryName(filePath);
@@ -56,7 +57,9 @@ namespace DotNet.Consolidate.Services
                         continue;
                     }
 
-                    var projectFilePath = Path.Combine(solutionDirectory, project.Path);
+                    // Solution files use the windows path separator '\' by default,
+                    // so we must convert to system path separator to work on posix systems.
+                    var projectFilePath = PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.Path));
                     var projectDirectory = Path.GetDirectoryName(projectFilePath);
                     if (projectDirectory == null)
                     {
@@ -65,7 +68,7 @@ namespace DotNet.Consolidate.Services
                         return solutionInfos;
                     }
 
-                    var packageConfigPath = Path.Combine(projectDirectory, "packages.config");
+                    var packageConfigPath = PathUtils.EnsureSystemSeparator(Path.Combine(projectDirectory, "packages.config"));
                     if (File.Exists(packageConfigPath))
                     {
                         var packages = _projectParser.ParsePackageConfig(packageConfigPath);
