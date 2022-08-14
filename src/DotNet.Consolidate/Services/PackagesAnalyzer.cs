@@ -3,34 +3,33 @@ using System.Linq;
 
 using DotNet.Consolidate.Models;
 
-namespace DotNet.Consolidate.Services
+namespace DotNet.Consolidate.Services;
+
+public class PackagesAnalyzer
 {
-    public class PackagesAnalyzer
+    public List<AnalysisResult> FindNonConsolidatedPackages(ICollection<ProjectInfo> projectInfos, Options options)
     {
-        public List<AnalysisResult> FindNonConsolidatedPackages(ICollection<ProjectInfo> projectInfos, Options options)
+        var analysisResults = new Dictionary<string, AnalysisResult>();
+        foreach (var projectInfo in projectInfos)
         {
-            var analysisResults = new Dictionary<string, AnalysisResult>();
-            foreach (var projectInfo in projectInfos)
+            foreach (var packageInfo in projectInfo.Packages)
             {
-                foreach (var packageInfo in projectInfo.Packages)
+                if (!analysisResults.TryGetValue(packageInfo.Id, out var analysisResult))
                 {
-                    if (!analysisResults.TryGetValue(packageInfo.Id, out var analysisResult))
-                    {
-                        analysisResult = new AnalysisResult(packageInfo.Id);
-                        analysisResults.Add(packageInfo.Id, analysisResult);
-                    }
-
-                    analysisResult.PackageVersions.Add(new ProjectNuGetPackageVersion(projectInfo.ProjectName, packageInfo.Version));
+                    analysisResult = new AnalysisResult(packageInfo.Id);
+                    analysisResults.Add(packageInfo.Id, analysisResult);
                 }
-            }
 
-            var nonConsolidatedPackages = analysisResults.Values.Where(r => r.ContainsDifferentPackagesVersions);
-            if (options.PackageIds?.Any() == true)
-            {
-                return nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
+                analysisResult.PackageVersions.Add(new ProjectNuGetPackageVersion(projectInfo.ProjectName, packageInfo.Version));
             }
-
-            return nonConsolidatedPackages.ToList();
         }
+
+        var nonConsolidatedPackages = analysisResults.Values.Where(r => r.ContainsDifferentPackagesVersions);
+        if (options.PackageIds?.Any() == true)
+        {
+            return nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
+        }
+
+        return nonConsolidatedPackages.ToList();
     }
 }

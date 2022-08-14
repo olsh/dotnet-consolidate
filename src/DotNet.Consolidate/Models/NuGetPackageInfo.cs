@@ -1,15 +1,14 @@
-﻿namespace DotNet.Consolidate.Models
+﻿namespace DotNet.Consolidate.Models;
+
+public class NuGetPackageInfo
 {
-    public class NuGetPackageInfo
+    public NuGetPackageInfo(string id, string version)
     {
-        public NuGetPackageInfo(string id, string version)
-        {
-            Id = id;
-            Version = version;
-        }
-
-        public string Id { get; }
-
-        public string Version { get; }
+        Id = id;
+        Version = version;
     }
+
+    public string Id { get; }
+
+    public string Version { get; }
 }

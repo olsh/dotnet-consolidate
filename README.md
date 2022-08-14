@@ -6,8 +6,8 @@
 
 .NET core tool that verifies that all NuGet packages in a solution are consolidated.
 
-> Developers typically consider it bad practice to use different versions of the same NuGet package across different projects in the same solution. 
-> 
+> Developers typically consider it bad practice to use different versions of the same NuGet package across different projects in the same solution.
+>
 > https://docs.microsoft.com/en-us/nuget/consume-packages/install-use-packages-visual-studio#consolidate-tab
 
 The tool finds such discrepancies.
@@ -17,6 +17,10 @@ The tool finds such discrepancies.
 `dotnet tool install dotnet-consolidate --global`
 
 ## Usage
+
+Run without parameters in root of your project will. All solution files of the current directory will be discovered and checked.
+
+`dotnet consoliate`
 
 Pass a solution file as a parameter
 

@@ -1,7 +1,6 @@
-﻿namespace DotNet.Consolidate.Services
+﻿namespace DotNet.Consolidate.Services;
+
+public interface ILogger
 {
-    public interface ILogger
-    {
-        void Message(string message);
-    }
+    void Message(string message);
 }

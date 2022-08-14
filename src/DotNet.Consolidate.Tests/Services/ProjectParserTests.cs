@@ -2,41 +2,40 @@
 using DotNet.Consolidate.Tests.Helpers;
 using Xunit;
 
-namespace DotNet.Consolidate.Tests.Services
+namespace DotNet.Consolidate.Tests.Services;
+
+public class ProjectParserTests
 {
-    public class ProjectParserTests
+    [Fact]
+    public void Package_reference_project_parsed_correctly()
     {
-        [Fact]
-        public void Package_reference_project_parsed_correctly()
-        {
-            var parser = new ProjectParser();
-            var projectFile = FileHelper.ReadResource("PackageReference.csproj");
+        var parser = new ProjectParser();
+        var projectFile = FileHelper.ReadResource("PackageReference.csproj");
 
-            var nuGetPackages = parser.ParseProjectContent(projectFile);
+        var nuGetPackages = parser.ParseProjectContent(projectFile);
 
-            Assert.Equal(2, nuGetPackages.Count);
-        }
+        Assert.Equal(2, nuGetPackages.Count);
+    }
 
-        [Fact]
-        public void Net_core_reference_project_parsed_correctly()
-        {
-            var parser = new ProjectParser();
-            var projectFile = FileHelper.ReadResource("NetCore.csproj");
+    [Fact]
+    public void Net_core_reference_project_parsed_correctly()
+    {
+        var parser = new ProjectParser();
+        var projectFile = FileHelper.ReadResource("NetCore.csproj");
 
-            var nuGetPackages = parser.ParseProjectContent(projectFile);
+        var nuGetPackages = parser.ParseProjectContent(projectFile);
 
-            Assert.Equal(3, nuGetPackages.Count);
-        }
+        Assert.Equal(3, nuGetPackages.Count);
+    }
 
-        [Fact]
-        public void Packages_config_parsed_correctly()
-        {
-            var parser = new ProjectParser();
-            var packagesConfig = FileHelper.ReadResource("packages.config");
+    [Fact]
+    public void Packages_config_parsed_correctly()
+    {
+        var parser = new ProjectParser();
+        var packagesConfig = FileHelper.ReadResource("packages.config");
 
-            var nuGetPackages = parser.ParsePackageConfigContent(packagesConfig);
+        var nuGetPackages = parser.ParsePackageConfigContent(packagesConfig);
 
-            Assert.Equal(2, nuGetPackages.Count);
-        }
+        Assert.Equal(2, nuGetPackages.Count);
     }
 }

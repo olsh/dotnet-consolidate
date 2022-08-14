@@ -1,15 +1,14 @@
-﻿namespace DotNet.Consolidate.Models
+﻿namespace DotNet.Consolidate.Models;
+
+public class ProjectNuGetPackageVersion
 {
-    public class ProjectNuGetPackageVersion
+    public ProjectNuGetPackageVersion(string projectName, string nuGetPackageVersion)
     {
-        public ProjectNuGetPackageVersion(string projectName, string nuGetPackageVersion)
-        {
-            ProjectName = projectName;
-            NuGetPackageVersion = nuGetPackageVersion;
-        }
-
-        public string NuGetPackageVersion { get; }
-
-        public string ProjectName { get; }
+        ProjectName = projectName;
+        NuGetPackageVersion = nuGetPackageVersion;
     }
+
+    public string NuGetPackageVersion { get; }
+
+    public string ProjectName { get; }
 }

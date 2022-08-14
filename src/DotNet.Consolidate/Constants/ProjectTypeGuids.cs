@@ -1,10 +1,8 @@
 ﻿using System;
 
-namespace DotNet.Consolidate.Constants
+namespace DotNet.Consolidate.Constants;
+
+public static class ProjectTypeGuids
 {
-    public class ProjectTypeGuids
-    {
-        // ReSharper disable once ExceptionNotDocumented
-        public static Guid SolutionFolder => new Guid("2150E333-8FDC-42A3-9474-1A3956D46DE8");
-    }
+    public static Guid SolutionFolder { get; } = new Guid("2150E333-8FDC-42A3-9474-1A3956D46DE8");
 }

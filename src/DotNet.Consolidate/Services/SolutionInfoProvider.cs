@@ -1,98 +1,108 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using DotNet.Consolidate.Constants;
 using DotNet.Consolidate.Models;
 
 using Onion.SolutionParser.Parser;
 
-namespace DotNet.Consolidate.Services
+namespace DotNet.Consolidate.Services;
+
+public class SolutionInfoProvider
 {
-    public class SolutionInfoProvider
+    private readonly IProjectParser _projectParser;
+    private readonly ISolutionFileProvider _solutionFileProvider;
+
+    private readonly ILogger _logger;
+
+    public SolutionInfoProvider(IProjectParser projectParser, ISolutionFileProvider solutionFileProvider, ILogger logger)
     {
-        private readonly IProjectParser _projectParser;
+        _projectParser = projectParser;
+        _solutionFileProvider = solutionFileProvider;
+        _logger = logger;
+    }
 
-        private readonly ILogger _logger;
-
-        public SolutionInfoProvider(IProjectParser projectParser, ILogger logger)
+    public List<SolutionInfo> GetSolutionsInfo(ICollection<string>? solutionsPaths)
+    {
+        if (solutionsPaths is null || !solutionsPaths.Any())
         {
-            _projectParser = projectParser;
-            _logger = logger;
+            _logger.Message("No solution given.");
+            solutionsPaths = _solutionFileProvider.FindSolutionsInCurrentDirectory();
         }
 
-        public List<SolutionInfo> GetSolutionsInfo(ICollection<string> solutionsPath)
+        var solutionInfos = new List<SolutionInfo>();
+        foreach (var path in solutionsPaths)
         {
-            var solutionInfos = new List<SolutionInfo>();
-            foreach (var path in solutionsPath)
+            var projectsInfo = TryGetProjectsInfo(path);
+            solutionInfos.Add(new SolutionInfo(path, projectsInfo));
+        }
+
+        return solutionInfos;
+    }
+
+    private List<ProjectInfo> TryGetProjectsInfo(string filePath)
+    {
+        var solutionInfos = new List<ProjectInfo>();
+
+        try
+        {
+            filePath = PathUtils.EnsureSystemSeparator(filePath);
+            var solution = SolutionParser.Parse(filePath);
+
+            var solutionDirectory = Path.GetDirectoryName(filePath);
+            if (solutionDirectory == null)
             {
-                var projectsInfo = TryGetProjectsInfo(path);
-                solutionInfos.Add(new SolutionInfo(path, projectsInfo));
+                _logger.Message($"Solution directory wasn't found for file {filePath}");
+
+                return solutionInfos;
             }
 
-            return solutionInfos;
-        }
-
-        private List<ProjectInfo> TryGetProjectsInfo(string filePath)
-        {
-            var solutionInfos = new List<ProjectInfo>();
-
-            try
+            foreach (var project in solution.Projects)
             {
-                filePath = PathUtils.EnsureSystemSeparator(filePath);
-                var solution = SolutionParser.Parse(filePath);
-
-                var solutionDirectory = Path.GetDirectoryName(filePath);
-                if (solutionDirectory == null)
+                if (project.TypeGuid == ProjectTypeGuids.SolutionFolder)
                 {
-                    _logger.Message($"Solution directory wasn't found for file {filePath}");
+                    continue;
+                }
+
+                // Solution files use the windows path separator '\' by default,
+                // so we must convert to system path separator to work on posix systems.
+                var projectFilePath =
+                    PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.Path));
+                var projectDirectory = Path.GetDirectoryName(projectFilePath);
+                if (projectDirectory == null)
+                {
+                    _logger.Message($"Project directory wasn't found for project {project.Name}");
 
                     return solutionInfos;
                 }
 
-                foreach (var project in solution.Projects)
+                var packageConfigPath =
+                    PathUtils.EnsureSystemSeparator(Path.Combine(projectDirectory, "packages.config"));
+                if (File.Exists(packageConfigPath))
                 {
-                    if (project.TypeGuid == ProjectTypeGuids.SolutionFolder)
-                    {
-                        continue;
-                    }
-
-                    // Solution files use the windows path separator '\' by default,
-                    // so we must convert to system path separator to work on posix systems.
-                    var projectFilePath = PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.Path));
-                    var projectDirectory = Path.GetDirectoryName(projectFilePath);
-                    if (projectDirectory == null)
-                    {
-                        _logger.Message($"Project directory wasn't found for project {project.Name}");
-
-                        return solutionInfos;
-                    }
-
-                    var packageConfigPath = PathUtils.EnsureSystemSeparator(Path.Combine(projectDirectory, "packages.config"));
-                    if (File.Exists(packageConfigPath))
-                    {
-                        var packages = _projectParser.ParsePackageConfig(packageConfigPath);
-                        solutionInfos.Add(new ProjectInfo(project.Name, packages));
-                    }
-                    else if (File.Exists(projectFilePath))
-                    {
-                        var packages = _projectParser.ParseProjectFile(projectFilePath);
-                        solutionInfos.Add(new ProjectInfo(project.Name, packages));
-                    }
-                    else
-                    {
-                        _logger.Message($"Unable to find project or package.config file for project {project.Path}");
-                    }
+                    var packages = _projectParser.ParsePackageConfig(packageConfigPath);
+                    solutionInfos.Add(new ProjectInfo(project.Name, packages));
                 }
-
-                return solutionInfos;
-            }
-            catch (Exception e)
-            {
-                _logger.Message($"Unable to get project info for {filePath}\r\n {e}");
+                else if (File.Exists(projectFilePath))
+                {
+                    var packages = _projectParser.ParseProjectFile(projectFilePath);
+                    solutionInfos.Add(new ProjectInfo(project.Name, packages));
+                }
+                else
+                {
+                    _logger.Message($"Unable to find project or package.config file for project {project.Path}");
+                }
             }
 
             return solutionInfos;
         }
+        catch (Exception e)
+        {
+            _logger.Message($"Unable to get project info for {filePath}\r\n {e}");
+        }
+
+        return solutionInfos;
     }
 }
