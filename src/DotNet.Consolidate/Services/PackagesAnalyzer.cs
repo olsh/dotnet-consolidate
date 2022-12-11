@@ -30,6 +30,11 @@ namespace DotNet.Consolidate.Services
                 return nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
             }
 
+            if (options.ExcludedPackageIds?.Any() == true)
+            {
+                return nonConsolidatedPackages.Where(p => !options.ExcludedPackageIds.Contains(p.NuGetPackageId)).ToList();
+            }
+
             return nonConsolidatedPackages.ToList();
         }
     }
