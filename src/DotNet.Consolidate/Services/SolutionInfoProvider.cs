@@ -33,6 +33,7 @@ namespace DotNet.Consolidate.Services
             return solutionInfos;
         }
 
+        // ReSharper disable once CognitiveComplexity
         private List<ProjectInfo> TryGetProjectsInfo(string filePath)
         {
             var solutionInfos = new List<ProjectInfo>();

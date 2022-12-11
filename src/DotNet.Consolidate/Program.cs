@@ -9,7 +9,7 @@ using DotNet.Consolidate.Services;
 
 namespace DotNet.Consolidate
 {
-    internal class Program
+    internal static class Program
     {
         private static void HandleParseError(IEnumerable<Error> errors)
         {
@@ -24,12 +24,20 @@ namespace DotNet.Consolidate
         {
             Parser.Default.ParseArguments<Options>(args)
                 .WithParsed(Consolidate)
-                .WithNotParsed(errors => HandleParseError(errors));
+                .WithNotParsed(HandleParseError);
         }
 
         private static void Consolidate(Options options)
         {
             var logger = new Logger();
+            if (options.ExcludedPackageIds?.Any() == true && options.PackageIds?.Any() == true)
+            {
+                logger.Message("There is no sense to provide both `-p` and `-e` argument at the same time.");
+                Environment.ExitCode = 1;
+
+                return;
+            }
+
             var solutionInfoProvider = new SolutionInfoProvider(new ProjectParser(), logger);
             var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(options.Solutions);
 
