@@ -32,7 +32,7 @@ namespace DotNet.Consolidate
             var logger = new Logger();
             if (options.ExcludedPackageIds?.Any() == true && options.PackageIds?.Any() == true)
             {
-                logger.Message("There is no sense to provide both `-p` and `-e` argument at the same time.");
+                logger.Message("There is no sense to provide both `-p` and `-e` arguments at the same time.");
                 Environment.ExitCode = 1;
 
                 return;
