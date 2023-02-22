@@ -28,6 +28,7 @@ namespace DotNet.Consolidate
                 .WithNotParsed(HandleParseError);
         }
 
+        // ReSharper disable once CognitiveComplexity
         private static void Consolidate(Options options)
         {
             var logger = new Logger();
@@ -62,6 +63,12 @@ namespace DotNet.Consolidate
             foreach (var solutionInfo in solutionsInfo)
             {
                 logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
+                if (!solutionInfo.IsParsedWithoutIssues)
+                {
+                    logger.Message($"Solution {solutionInfo.SolutionFile} wasn't parsed correctly, the results may be invalid");
+
+                    Environment.ExitCode = 1;
+                }
 
                 var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
                 logger.WriteAnalysisResults(nonConsolidatedPackages, solutionInfo, options);
