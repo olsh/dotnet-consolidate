@@ -2,13 +2,13 @@
 {
     public class ProjectNuGetPackageVersion
     {
-        public ProjectNuGetPackageVersion(string projectName, string nuGetPackageVersion)
+        public ProjectNuGetPackageVersion(string projectName, Version nuGetPackageVersion)
         {
             ProjectName = projectName;
             NuGetPackageVersion = nuGetPackageVersion;
         }
 
-        public string NuGetPackageVersion { get; }
+        public Version NuGetPackageVersion { get; }
 
         public string ProjectName { get; }
     }

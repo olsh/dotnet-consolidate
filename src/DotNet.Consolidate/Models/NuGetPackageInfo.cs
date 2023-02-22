@@ -2,7 +2,7 @@
 {
     public class NuGetPackageInfo
     {
-        public NuGetPackageInfo(string id, string version)
+        public NuGetPackageInfo(string id, Version version)
         {
             Id = id;
             Version = version;
@@ -10,6 +10,6 @@
 
         public string Id { get; }
 
-        public string Version { get; }
+        public Version Version { get; }
     }
 }
