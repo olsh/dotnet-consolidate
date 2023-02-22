@@ -122,7 +122,8 @@ namespace DotNet.Consolidate.Services
                     }
                     else
                     {
-                        _logger.Message($"Unable to find project or package.config file for project {project.Path}");
+                        projectInfos.Add(new ProjectInfo(project.Name, new List<NuGetPackageInfo>()));
+                        _logger.Message($"Unable to find package.config file for project {project.Path}");
                     }
                 }
                 catch (Exception e)
