@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 using CommandLine;
@@ -39,7 +40,22 @@ namespace DotNet.Consolidate
             }
 
             var solutionInfoProvider = new SolutionInfoProvider(new ProjectParser(), logger);
-            var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(options.Solutions);
+
+            ICollection<string> solutions;
+            if (options.Solutions?.Any() == true)
+            {
+                solutions = options.Solutions;
+            }
+            else
+            {
+                solutions = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.sln", SearchOption.TopDirectoryOnly);
+                if (!solutions.Any())
+                {
+                    logger.Message($"No solution files were found in {Directory.GetCurrentDirectory()}");
+                }
+            }
+
+            var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(solutions);
 
             var packagesAnalyzer = new PackagesAnalyzer();
 

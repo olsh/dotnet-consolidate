@@ -19,7 +19,7 @@ namespace DotNet.Consolidate.Models
         [Option('e', "excluded", Required = false, HelpText = "Package IDs that will be skipped during checking.")]
         public ICollection<string>? ExcludedPackageIds { get; }
 
-        [Option('s', "solutions", Required = true, HelpText = "Target solutions for checking.")]
-        public ICollection<string> Solutions { get; }
+        [Option('s', "solutions", Required = false, HelpText = "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
+        public ICollection<string>? Solutions { get; }
     }
 }
