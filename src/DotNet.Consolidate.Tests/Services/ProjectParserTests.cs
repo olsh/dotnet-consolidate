@@ -9,7 +9,7 @@ namespace DotNet.Consolidate.Tests.Services
         [Fact]
         public void Package_reference_project_parsed_correctly()
         {
-            var parser = new ProjectParser();
+            var parser = new ProjectParser(new Logger());
             var projectFile = FileHelper.ReadResource("PackageReference.csproj");
 
             var nuGetPackages = parser.ParseProjectContent(projectFile);
@@ -20,7 +20,7 @@ namespace DotNet.Consolidate.Tests.Services
         [Fact]
         public void Net_core_reference_project_parsed_correctly()
         {
-            var parser = new ProjectParser();
+            var parser = new ProjectParser(new Logger());
             var projectFile = FileHelper.ReadResource("NetCore.csproj");
 
             var nuGetPackages = parser.ParseProjectContent(projectFile);
@@ -31,12 +31,17 @@ namespace DotNet.Consolidate.Tests.Services
         [Fact]
         public void Packages_config_parsed_correctly()
         {
-            var parser = new ProjectParser();
+            var parser = GetParser();
             var packagesConfig = FileHelper.ReadResource("packages.config");
 
             var nuGetPackages = parser.ParsePackageConfigContent(packagesConfig);
 
             Assert.Equal(2, nuGetPackages.Count);
+        }
+
+        private static ProjectParser GetParser()
+        {
+            return new ProjectParser(new Logger());
         }
     }
 }
