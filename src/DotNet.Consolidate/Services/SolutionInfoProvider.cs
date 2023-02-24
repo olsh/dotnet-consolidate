@@ -128,7 +128,7 @@ namespace DotNet.Consolidate.Services
                 }
                 catch (Exception e)
                 {
-                    _logger.Message($"Unable to get project info for {filePath}\r\n {e}");
+                    _logger.Message($"Unable to get project info for {project.Path}\r\n {e}");
                 }
             }
 

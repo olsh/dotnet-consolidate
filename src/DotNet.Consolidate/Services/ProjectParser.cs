@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -5,15 +6,33 @@ using System.Xml.Linq;
 
 using DotNet.Consolidate.Models;
 
+using Version = DotNet.Consolidate.Models.Version;
+
 namespace DotNet.Consolidate.Services
 {
     public class ProjectParser : IProjectParser
     {
+        private readonly ILogger _logger;
+
+        public ProjectParser(ILogger logger)
+        {
+            _logger = logger;
+        }
+
         public List<NuGetPackageInfo> ParsePackageConfig(string path)
         {
-            var content = File.ReadAllText(path);
+            try
+            {
+                var content = File.ReadAllText(path);
 
-            return ParsePackageConfigContent(content);
+                return ParsePackageConfigContent(content);
+            }
+            catch (Exception)
+            {
+                _logger.Message($"Unable to parse {path}");
+
+                throw;
+            }
         }
 
         public List<NuGetPackageInfo> ParsePackageConfigContent(string content)
@@ -44,9 +63,18 @@ namespace DotNet.Consolidate.Services
 
         public List<NuGetPackageInfo> ParseProjectFile(string path)
         {
-            var content = File.ReadAllText(path);
+            try
+            {
+                var content = File.ReadAllText(path);
 
-            return ParseProjectContent(content);
+                return ParseProjectContent(content);
+            }
+            catch (Exception)
+            {
+                _logger.Message($"Unable to parse file {path}");
+
+                throw;
+            }
         }
 
         public List<NuGetPackageInfo> ParseProjectContent(string content)
