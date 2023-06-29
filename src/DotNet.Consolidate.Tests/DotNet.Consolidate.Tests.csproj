@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="TestData\Directory.build.props" />
     <None Remove="TestData\packages.config" />
   </ItemGroup>
 
@@ -24,13 +25,50 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="TestData\Directory.build.props" />
     <EmbeddedResource Include="TestData\PackageReference.csproj" />
     <EmbeddedResource Include="TestData\NetCore.csproj" />
     <EmbeddedResource Include="TestData\packages.config" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="TestData\TestSolution\src\ProjectA\ProjectA.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="TestData\TestSolution\src\ProjectB\ProjectB.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="TestData\TestSolution\tests\ProjectA.Tests\ProjectA.Tests.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\TestSolution\tests\ProjectB.Tests\ProjectB.Tests.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="TestData\TestSolution\TestSolution.sln">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DotNet.Consolidate\DotNet.Consolidate.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="TestData\TestSolution\Directory.build.props">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TestData\TestSolution\tests\Directory.build.props">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

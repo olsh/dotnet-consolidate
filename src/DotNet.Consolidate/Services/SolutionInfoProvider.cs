@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 using DotNet.Consolidate.Constants;
 using DotNet.Consolidate.Models;
@@ -16,10 +17,13 @@ namespace DotNet.Consolidate.Services
 
         private readonly ILogger _logger;
 
-        public SolutionInfoProvider(IProjectParser projectParser, ILogger logger)
+        private readonly bool _readDirectoryBuildProps;
+
+        public SolutionInfoProvider(IProjectParser projectParser, ILogger logger, bool readDirectoryBuildProps)
         {
             _projectParser = projectParser;
             _logger = logger;
+            _readDirectoryBuildProps = readDirectoryBuildProps;
         }
 
         public List<SolutionInfo> GetSolutionsInfo(ICollection<string> solutionsPath)
@@ -30,16 +34,49 @@ namespace DotNet.Consolidate.Services
                 var (isSuccessParsing, solutionInfo) = TryGetSolutionInfo(solutionFile);
                 if (!isSuccessParsing || solutionInfo == null)
                 {
-                    solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo, new List<ProjectInfo>()));
+                    solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo, new List<ProjectInfo>(), new List<DirectoryBuildPropsInfo>()));
 
                     continue;
                 }
 
                 var projectsInfo = TryGetProjectsInfo(solutionFile, solutionInfo);
-                solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo,  projectsInfo));
+                var directoryBuildPropsInfos = _readDirectoryBuildProps
+                    ? TryGetDirectoryBuildPropsInfo(new FileInfo(solutionFile).Directory)
+                    : new List<DirectoryBuildPropsInfo>();
+                ApplyInheritedPackages(projectsInfo, directoryBuildPropsInfos);
+                solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo,  projectsInfo, directoryBuildPropsInfos));
             }
 
             return solutionInfos;
+        }
+
+        private static void ApplyInheritedPackages(ICollection<ProjectInfo> projectsInfo, ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
+        {
+            if (!projectsInfo.Any())
+            {
+                return;
+            }
+
+            if (!directoryBuildPropsInfos.Any())
+            {
+                return;
+            }
+
+            foreach (var projectInfo in projectsInfo)
+            {
+                var directoryBuildProps = directoryBuildPropsInfos
+                    .Where(dbp => !string.IsNullOrEmpty(dbp.DirectoryName))
+                    .OrderByDescending(dbp => dbp.DirectoryName.Length)
+                    .FirstOrDefault(dbp => projectInfo.ProjectDirectory.StartsWith(dbp.DirectoryName));
+
+                if (directoryBuildProps != null)
+                {
+                    foreach (var packageReference in directoryBuildProps.Packages)
+                    {
+                        projectInfo.Packages.Add(new NuGetPackageInfo(packageReference.Id, packageReference.Version, NuGetPackageReferenceType.Inherited));
+                    }
+                }
+            }
         }
 
         private (bool isSuccessParsing, ISolution? solution) TryGetSolutionInfo(string filePath)
@@ -113,16 +150,16 @@ namespace DotNet.Consolidate.Services
                     if (File.Exists(packageConfigPath))
                     {
                         var packages = _projectParser.ParsePackageConfig(packageConfigPath);
-                        projectInfos.Add(new ProjectInfo(project.Name, packages));
+                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, packages));
                     }
                     else if (File.Exists(projectFilePath))
                     {
                         var packages = _projectParser.ParseProjectFile(projectFilePath);
-                        projectInfos.Add(new ProjectInfo(project.Name, packages));
+                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, packages));
                     }
                     else
                     {
-                        projectInfos.Add(new ProjectInfo(project.Name, new List<NuGetPackageInfo>()));
+                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, new List<NuGetPackageInfo>()));
                         _logger.Message($"Unable to find package.config file for project {project.Path}");
                     }
                 }
@@ -133,6 +170,45 @@ namespace DotNet.Consolidate.Services
             }
 
             return projectInfos;
+        }
+
+        // ReSharper disable once CognitiveComplexity
+        private List<DirectoryBuildPropsInfo> TryGetDirectoryBuildPropsInfo(DirectoryInfo? path)
+        {
+            var directoryBuildPropsInfo = new List<DirectoryBuildPropsInfo>();
+
+            if (path == null)
+            {
+                return directoryBuildPropsInfo;
+            }
+
+            var directorySearchOptions = new EnumerationOptions()
+            {
+                MatchCasing = MatchCasing.CaseInsensitive,
+                RecurseSubdirectories = false,
+            };
+
+            foreach (var fileInfo in path.GetFiles("Directory.Build.props", directorySearchOptions))
+            {
+                try
+                {
+                    var packages = _projectParser.ParseProjectFile(fileInfo.FullName);
+
+                    directoryBuildPropsInfo.Add(new DirectoryBuildPropsInfo(fileInfo.Name,  fileInfo.Directory?.FullName ?? string.Empty, packages));
+                }
+                catch (Exception e)
+                {
+                    _logger.Message($"Unable to get Directory Build props info for {path.FullName}\r\n {e}");
+                }
+            }
+
+            var subPaths = path.GetDirectories("*", SearchOption.TopDirectoryOnly);
+            foreach (var subPath in subPaths)
+            {
+                directoryBuildPropsInfo.AddRange(TryGetDirectoryBuildPropsInfo(subPath));
+            }
+
+            return directoryBuildPropsInfo;
         }
     }
 }

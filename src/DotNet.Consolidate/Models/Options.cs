@@ -21,5 +21,11 @@ namespace DotNet.Consolidate.Models
 
         [Option('s', "solutions", Required = false, HelpText = "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
         public ICollection<string>? Solutions { get; }
+
+        [Option('d', "directoryBuildProps", Required = false, Default = true, HelpText = "Take Directory.Build.props files into account")]
+        public bool ReadDirectoryBuildProps { get; set; }
+
+        [Option('o', "reportOverridenDirectoryBuildProps", Required = false, Default = true, HelpText = "Report when csproj overrides a Directory.Build.props")]
+        public bool ReportOverridenDirectoryBuildProps { get; set; }
     }
 }

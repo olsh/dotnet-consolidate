@@ -40,7 +40,7 @@ namespace DotNet.Consolidate
                 return;
             }
 
-            var solutionInfoProvider = new SolutionInfoProvider(new ProjectParser(logger), logger);
+            var solutionInfoProvider = new SolutionInfoProvider(new ProjectParser(logger), logger, options.ReadDirectoryBuildProps);
 
             ICollection<string> solutions;
             if (options.Solutions?.Any() == true)

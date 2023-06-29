@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "DotNet.Consolidate": {
+      "commandName": "Project"
+    }
+  }
+}
