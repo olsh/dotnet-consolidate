@@ -50,6 +50,9 @@ namespace DotNet.Consolidate.Services
             return solutionInfos;
         }
 
+        /// <remarks>
+        /// NOTE: This does not support chained Directory.Build.props (Import directive)
+        /// </remarks>
         private static void ApplyInheritedPackages(ICollection<ProjectInfo> projectsInfo, ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
         {
             if (!projectsInfo.Any())
