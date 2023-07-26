@@ -1,4 +1,4 @@
-﻿using DotNet.Consolidate.Services;
+using DotNet.Consolidate.Services;
 using DotNet.Consolidate.Tests.Helpers;
 using Xunit;
 
@@ -37,6 +37,17 @@ namespace DotNet.Consolidate.Tests.Services
             var nuGetPackages = parser.ParsePackageConfigContent(packagesConfig);
 
             Assert.Equal(2, nuGetPackages.Count);
+        }
+
+        [Fact]
+        public void Directory_Build_props_reference_project_parsed_correctly()
+        {
+            var parser = new ProjectParser(new Logger());
+            var projectFile = FileHelper.ReadResource("Directory.build.props");
+
+            var nuGetPackages = parser.ParseProjectContent(projectFile);
+
+            Assert.Equal(7, nuGetPackages.Count);
         }
 
         private static ProjectParser GetParser()

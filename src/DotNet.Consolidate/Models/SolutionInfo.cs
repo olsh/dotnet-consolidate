@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 
 using DotNet.Consolidate.Constants;
@@ -9,14 +9,17 @@ namespace DotNet.Consolidate.Models
 {
     public class SolutionInfo
     {
-        public SolutionInfo(string solutionFile, ISolution? solution, ICollection<ProjectInfo> projectInfos)
+        public SolutionInfo(string solutionFile, ISolution? solution, ICollection<ProjectInfo> projectInfos, ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
         {
             SolutionFile = solutionFile;
             Solution = solution;
             ProjectInfos = projectInfos;
+            DirectoryBuildPropsInfos = directoryBuildPropsInfos;
         }
 
         public ICollection<ProjectInfo> ProjectInfos { get; }
+
+        public ICollection<DirectoryBuildPropsInfo> DirectoryBuildPropsInfos { get; }
 
         public string SolutionFile { get; }
 

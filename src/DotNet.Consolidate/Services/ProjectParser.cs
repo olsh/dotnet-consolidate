@@ -55,7 +55,7 @@ namespace DotNet.Consolidate.Services
                     continue;
                 }
 
-                packageInfos.Add(new NuGetPackageInfo(id.Value, new Version(version.Value)));
+                packageInfos.Add(new NuGetPackageInfo(id.Value, new Version(version.Value), NuGetPackageReferenceType.Direct));
             }
 
             return packageInfos;
@@ -99,7 +99,7 @@ namespace DotNet.Consolidate.Services
                     continue;
                 }
 
-                packageInfos.Add(new NuGetPackageInfo(id.Value, new Version(version)));
+                packageInfos.Add(new NuGetPackageInfo(id.Value, new Version(version), NuGetPackageReferenceType.Direct));
             }
 
             return packageInfos;
