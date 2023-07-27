@@ -51,7 +51,7 @@ Task("SonarBegin")
   .Does(() => {
      SonarBegin(new SonarBeginSettings {
         Url = "https://sonarcloud.io",
-        Token = EnvironmentVariable("sonar:apikey"),
+        Login = EnvironmentVariable("sonar:apikey"),
         Key = "dotnet-consolidate",
         Name = "dotnet consolidate",
         ArgumentCustomization = args => args
@@ -63,7 +63,7 @@ Task("SonarBegin")
 Task("SonarEnd")
   .Does(() => {
      SonarEnd(new SonarEndSettings {
-        Token = EnvironmentVariable("sonar:apikey")
+        Login = EnvironmentVariable("sonar:apikey")
      });
   });
 
