@@ -27,31 +27,31 @@ Task("UpdateBuildVersion")
 Task("Build")
   .Does(() =>
 {
-    var settings = new DotNetCoreBuildSettings
+    var settings = new DotNetBuildSettings
     {
         Configuration = buildConfiguration
     };
 
-    DotNetCoreBuild(solutionFile, settings);
+    DotNetBuild(solutionFile, settings);
 });
 
 Task("Test")
   .IsDependentOn("Build")
   .Does(() =>
 {
-     var settings = new DotNetCoreTestSettings
+     var settings = new DotNetTestSettings
      {
          Configuration = buildConfiguration
      };
 
-     DotNetCoreTest(testProjectFile, settings);
+     DotNetTest(testProjectFile, settings);
 });
 
 Task("SonarBegin")
   .Does(() => {
      SonarBegin(new SonarBeginSettings {
         Url = "https://sonarcloud.io",
-        Login = EnvironmentVariable("sonar:apikey"),
+        Token = EnvironmentVariable("sonar:apikey"),
         Key = "dotnet-consolidate",
         Name = "dotnet consolidate",
         ArgumentCustomization = args => args
@@ -63,20 +63,20 @@ Task("SonarBegin")
 Task("SonarEnd")
   .Does(() => {
      SonarEnd(new SonarEndSettings {
-        Login = EnvironmentVariable("sonar:apikey")
+        Token = EnvironmentVariable("sonar:apikey")
      });
   });
 
 Task("NugetPack")
   .Does(() =>
 {
-     var settings = new DotNetCorePackSettings
+     var settings = new DotNetPackSettings
      {
          Configuration = buildConfiguration,
          OutputDirectory = "."
      };
 
-     DotNetCorePack(projectFolder, settings);
+     DotNetPack(projectFolder, settings);
 });
 
 Task("CreateArtifact")
