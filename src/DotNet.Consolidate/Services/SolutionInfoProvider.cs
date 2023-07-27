@@ -51,7 +51,7 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <remarks>
-        /// NOTE: This does not support chained Directory.Build.props (Import directive)
+        /// NOTE: This does not support chained Directory.Build.props (Import directive).
         /// </remarks>
         private static void ApplyInheritedPackages(ICollection<ProjectInfo> projectsInfo, ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
         {
