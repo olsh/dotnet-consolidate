@@ -6,11 +6,13 @@ namespace DotNet.Consolidate.Models
 {
     public class Options
     {
-        public Options(ICollection<string> solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds)
+        public Options(ICollection<string>? solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds, bool readDirectoryBuildProps, bool reportOverridenDirectoryBuildProps)
         {
-            Solutions = solutions;
             PackageIds = packageIds;
             ExcludedPackageIds = excludedPackageIds;
+            Solutions = solutions;
+            ReadDirectoryBuildProps = readDirectoryBuildProps;
+            ReportOverridenDirectoryBuildProps = reportOverridenDirectoryBuildProps;
         }
 
         [Option('p', "packageIds", Required = false, HelpText = "Package IDs for checking.")]
@@ -23,9 +25,9 @@ namespace DotNet.Consolidate.Models
         public ICollection<string>? Solutions { get; }
 
         [Option('d', "directoryBuildProps", Required = false, Default = true, HelpText = "Take Directory.Build.props files into account")]
-        public bool ReadDirectoryBuildProps { get; set; }
+        public bool ReadDirectoryBuildProps { get; }
 
         [Option('o', "reportOverridenDirectoryBuildProps", Required = false, Default = true, HelpText = "Report when csproj overrides a Directory.Build.props")]
-        public bool ReportOverridenDirectoryBuildProps { get; set; }
+        public bool ReportOverridenDirectoryBuildProps { get; }
     }
 }
