@@ -55,7 +55,7 @@ Task("SonarBegin")
         Key = "dotnet-consolidate",
         Name = "dotnet consolidate",
         ArgumentCustomization = args => args
-            .Append("/o:olsh-github"),
+            .Append("/o:olsh"),
         Version = extensionsVersion
      });
   });
