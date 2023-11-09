@@ -42,8 +42,10 @@ public class PackagesAnalyzerTests
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
     }
 
-    [Fact]
-    public void Packages_with_excluded_versions_are_not_matched()
+    [Theory]
+    [InlineData(".*-alpha$", true)]
+    [InlineData(".*-beta", false)]
+    public void Packages_version_exclude_regex_correctly_matches(string excludedPackageVersionsRegex, bool shouldMatch)
     {
         var analyzer = new PackagesAnalyzer();
         var info = new ProjectInfo("Test", "Test", new List<NuGetPackageInfo>()
@@ -52,9 +54,9 @@ public class PackagesAnalyzerTests
             new ("myid", new Version("1.0.1.0-alpha"), NuGetPackageReferenceType.Direct)
         });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), ".*-alpha$", true, true);
+        var options = new Options(new List<string>(), new List<string>(), new List<string>(), excludedPackageVersionsRegex, true, true);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
-        Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
+        Assert.All(result, analysisResult => Assert.NotEqual(shouldMatch, analysisResult.ContainsDifferentPackagesVersions));
     }
 }
