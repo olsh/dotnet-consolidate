@@ -95,3 +95,27 @@ Microsoft.AspNetCore.TestHost
 Sentry.Testing - 2.1.1
 Sentry.Testing - 3.1.0
 ```
+
+## Testing a development version of the tool locally from source
+
+Run the following commands in `src/DotNet.Consolidate`:
+
+```powershell
+dotnet build
+dotnet pack
+```
+
+The package will be created under `bin/Release`.
+
+Open the folder of the solution where you want to test the tool, then run:
+
+```powershell
+dotnet tool install dotnet-consolidate --local --add-source  <full path of bin/Release>
+dotnet consolidate -s YourSolution.sln
+```
+
+When you're finished, you can also uninstall it to clean up:
+
+```powershell
+dotnet tool uninstall dotnet-consolidate
+```
