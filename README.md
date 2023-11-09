@@ -27,11 +27,16 @@ or multiple solutions
 `dotnet consolidate -s YourSolution.sln AnotherSolution.sln`
 
 You can also optionally specify the a package ID if you want only a single package to be consolidated
+
 `dotnet consolidate -s YourSolution.sln -p PackageId`
 
 or a list of package IDs if you want to consolidate multiple, but not all which are referenced in the solution projects
 
 `dotnet consolidate -s YourSolution.sln -p PackageID1 PackageID2`
+
+Alternatively, you can configure the opposite, package IDs that should be skipped during consolidation:
+
+`dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
