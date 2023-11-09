@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 using DotNet.Consolidate.Models;
 
@@ -27,12 +28,19 @@ namespace DotNet.Consolidate.Services
             var nonConsolidatedPackages = analysisResults.Values.Where(r => r.ContainsDifferentPackagesVersions);
             if (options.PackageIds?.Any() == true)
             {
-                return nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
+                nonConsolidatedPackages = nonConsolidatedPackages.Where(p => options.PackageIds.Contains(p.NuGetPackageId)).ToList();
             }
 
             if (options.ExcludedPackageIds?.Any() == true)
             {
-                return nonConsolidatedPackages.Where(p => !options.ExcludedPackageIds.Contains(p.NuGetPackageId)).ToList();
+                nonConsolidatedPackages = nonConsolidatedPackages.Where(p => !options.ExcludedPackageIds.Contains(p.NuGetPackageId)).ToList();
+            }
+
+            if (!string.IsNullOrEmpty(options.ExcludedPackageVersionsRegex))
+            {
+                nonConsolidatedPackages = nonConsolidatedPackages
+                    .Where(p => !p.PackageVersions.Any(version =>
+                        Regex.IsMatch(version.NuGetPackageVersion.OriginalValue, options.ExcludedPackageVersionsRegex)));
             }
 
             return nonConsolidatedPackages.ToList();

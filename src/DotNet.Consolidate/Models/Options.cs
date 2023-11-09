@@ -6,10 +6,11 @@ namespace DotNet.Consolidate.Models
 {
     public class Options
     {
-        public Options(ICollection<string>? solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds, bool readDirectoryBuildProps, bool reportOverridenDirectoryBuildProps)
+        public Options(ICollection<string>? solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds, string? excludedPackageVersionsRegex, bool readDirectoryBuildProps, bool reportOverridenDirectoryBuildProps)
         {
             PackageIds = packageIds;
             ExcludedPackageIds = excludedPackageIds;
+            ExcludedPackageVersionsRegex = excludedPackageVersionsRegex;
             Solutions = solutions;
             ReadDirectoryBuildProps = readDirectoryBuildProps;
             ReportOverridenDirectoryBuildProps = reportOverridenDirectoryBuildProps;
@@ -20,6 +21,9 @@ namespace DotNet.Consolidate.Models
 
         [Option('e', "excluded", Required = false, HelpText = "Package IDs that will be skipped during checking.")]
         public ICollection<string>? ExcludedPackageIds { get; }
+
+        [Option('v', "excludedVersionsRegex", Required = false, HelpText = "A regular expression to match package versions that will be skipped during checking.")]
+        public string? ExcludedPackageVersionsRegex { get; }
 
         [Option('s', "solutions", Required = false, HelpText = "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
         public ICollection<string>? Solutions { get; }
