@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -40,7 +41,7 @@ namespace DotNet.Consolidate.Services
             {
                 nonConsolidatedPackages = nonConsolidatedPackages
                     .Where(p => !p.PackageVersions.Any(version =>
-                        Regex.IsMatch(version.NuGetPackageVersion.OriginalValue, options.ExcludedPackageVersionsRegex)));
+                        Regex.IsMatch(version.NuGetPackageVersion.OriginalValue, options.ExcludedPackageVersionsRegex, RegexOptions.None, TimeSpan.FromMilliseconds(100))));
             }
 
             return nonConsolidatedPackages.ToList();
