@@ -51,7 +51,7 @@ public class PackagesAnalyzerTests
         var info = new ProjectInfo("Test", "Test", new List<NuGetPackageInfo>()
         {
             new ("myid", new Version("1.1.0-alpha"), NuGetPackageReferenceType.Direct),
-            new ("myid", new Version("1.0.1.0-alpha"), NuGetPackageReferenceType.Direct)
+            new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
         });
         var projectInfos = new List<ProjectInfo> { info };
         var options = new Options(new List<string>(), new List<string>(), new List<string>(), excludedPackageVersionsRegex, true, true);
