@@ -38,6 +38,12 @@ Alternatively, you can configure the opposite, package IDs that should be skippe
 
 `dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
 
+It's also possible to skip a pattern of versions during consolidation with a regular expression:
+
+`dotnet consolidate -s YourSolution.sln -v .*-alpha$`
+
+With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, and another project `MyPackage` v1.1.0-alpha, then no discrepancy will be indicated.
+
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
 ## Examples
