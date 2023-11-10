@@ -27,11 +27,22 @@ or multiple solutions
 `dotnet consolidate -s YourSolution.sln AnotherSolution.sln`
 
 You can also optionally specify the a package ID if you want only a single package to be consolidated
+
 `dotnet consolidate -s YourSolution.sln -p PackageId`
 
 or a list of package IDs if you want to consolidate multiple, but not all which are referenced in the solution projects
 
 `dotnet consolidate -s YourSolution.sln -p PackageID1 PackageID2`
+
+Alternatively, you can configure the opposite, package IDs that should be skipped during consolidation:
+
+`dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
+
+It's also possible to skip a pattern of versions during consolidation with a regular expression:
+
+`dotnet consolidate -s YourSolution.sln --excludedVersionsRegex .*-alpha$`
+
+With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, and another project `MyPackage` v1.1.0-alpha, then no discrepancy will be indicated.
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
@@ -83,4 +94,28 @@ Microsoft.AspNetCore.TestHost
 ----------------------------
 Sentry.Testing - 2.1.1
 Sentry.Testing - 3.1.0
+```
+
+## Testing a development version of the tool locally from source
+
+Run the following commands in `src/DotNet.Consolidate`:
+
+```powershell
+dotnet build
+dotnet pack
+```
+
+The package will be created under `bin/Release`.
+
+Open the folder of the solution where you want to test the tool, then run:
+
+```powershell
+dotnet tool install dotnet-consolidate --local --add-source  <full path of bin/Release>
+dotnet consolidate -s YourSolution.sln
+```
+
+When you're finished, you can also uninstall it to clean up:
+
+```powershell
+dotnet tool uninstall dotnet-consolidate
 ```
