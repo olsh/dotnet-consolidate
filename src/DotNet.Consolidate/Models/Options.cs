@@ -25,7 +25,7 @@ namespace DotNet.Consolidate.Models
         [Option('e', "excluded", Required = false, HelpText = "Package IDs that will be skipped during checking.")]
         public ICollection<string>? ExcludedPackageIds { get; }
 
-        [Option('v', "excludedVersionsRegex", Required = false, HelpText = "A regular expression to match package versions that will be skipped during checking.")]
+        [Option("excludedVersionsRegex", Required = false, HelpText = "A regular expression to match package versions that will be skipped during checking.")]
         public string ExcludedPackageVersionsRegex { get; }
 
         [Option('d', "directoryBuildProps", Required = false, Default = true, HelpText = "Take Directory.Build.props files into account")]
