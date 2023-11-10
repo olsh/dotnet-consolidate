@@ -48,7 +48,7 @@ namespace DotNet.Consolidate.Tests.Services
 
             // Assert
             Assert.NotNull(solution);
-            Assert.Equal(0, solution.DirectoryBuildPropsInfos.Count);
+            Assert.Empty(solution.DirectoryBuildPropsInfos);
         }
 
         [Fact]
@@ -109,22 +109,22 @@ namespace DotNet.Consolidate.Tests.Services
 
             // Assert
             Assert.NotNull(projectA);
-            Assert.Equal(0, projectA.Packages.Count);
+            Assert.Empty(projectA.Packages);
             Assert.Equal(0, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
             Assert.Equal(0, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectB);
-            Assert.Equal(1, projectB.Packages.Count);
+            Assert.Single(projectB.Packages);
             Assert.Equal(1, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
             Assert.Equal(0, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectATests);
-            Assert.Equal(0, projectATests.Packages.Count);
+            Assert.Empty(projectATests.Packages);
             Assert.Equal(0, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
             Assert.Equal(0, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectBTests);
-            Assert.Equal(0, projectBTests.Packages.Count);
+            Assert.Empty(projectBTests.Packages);
             Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
             Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
         }
