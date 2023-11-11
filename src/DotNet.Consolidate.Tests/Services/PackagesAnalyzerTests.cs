@@ -45,6 +45,7 @@ public class PackagesAnalyzerTests
     [Theory]
     [InlineData(".*-alpha$", true)]
     [InlineData(".*-beta$", false)]
+    [InlineData("", false)]
     public void Packages_version_exclude_regex_correctly_matches(string excludedPackageVersionsRegex, bool shouldMatch)
     {
         var analyzer = new PackagesAnalyzer();
