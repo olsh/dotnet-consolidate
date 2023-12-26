@@ -20,7 +20,7 @@ public class PackagesAnalyzerTests
             new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
         });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true);
+        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true, OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
@@ -36,7 +36,7 @@ public class PackagesAnalyzerTests
             new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
         });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true);
+        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true, OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
@@ -55,7 +55,7 @@ public class PackagesAnalyzerTests
             new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
         });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), excludedPackageVersionsRegex, true, true);
+        var options = new Options(new List<string>(), new List<string>(), new List<string>(), excludedPackageVersionsRegex, true, true, OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.NotEqual(shouldMatch, analysisResult.ContainsDifferentPackagesVersions));
