@@ -10,17 +10,17 @@ namespace DotNet.Consolidate.Services.OutputWriters
 {
     public class JsonOutputWriter : IOutputWriter
     {
+        private readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            Converters =
+            {
+                new JsonStringEnumConverter() // use names and not values of enums
+            }
+        };
+
         public void WriteAnalysisResults(Dictionary<SolutionInfo, IEnumerable<AnalysisResult>> nonConsolidatedPackages, Options options, Stream stream)
         {
-            JsonSerializerOptions serializerOptions = new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                Converters =
-                {
-                    new JsonStringEnumConverter() // use names and not values of enums
-                }
-            };
-
             var result = new
             {
                 Solutions = nonConsolidatedPackages.Select(kv => new
@@ -30,7 +30,7 @@ namespace DotNet.Consolidate.Services.OutputWriters
                 }).ToArray()
             };
 
-            JsonSerializer.Serialize(stream, result, serializerOptions);
+            JsonSerializer.Serialize(stream, result, _serializerOptions);
         }
     }
 }
