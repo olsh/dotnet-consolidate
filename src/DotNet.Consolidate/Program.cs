@@ -31,7 +31,7 @@ namespace DotNet.Consolidate
                 case OutputFormat.Text:
                     return new TextOutputWriter();
                 default:
-                    throw new Exception($"Output format {options.OutputFormat} is not supported");
+                    throw new InvalidOperationException($"Output format {options.OutputFormat} is not supported");
             }
         }
 
