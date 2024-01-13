@@ -45,7 +45,7 @@ namespace DotNet.Consolidate.Tests.Services
             }
         }
 
-        private Dictionary<SolutionInfo, IEnumerable<AnalysisResult>> GetResults(Options options)
+        private static Dictionary<SolutionInfo, IEnumerable<AnalysisResult>> GetResults(Options options)
         {
             Dictionary<SolutionInfo, IEnumerable<AnalysisResult>> solutionResults = new Dictionary<SolutionInfo, IEnumerable<AnalysisResult>>();
             var analyzer = new PackagesAnalyzer();
