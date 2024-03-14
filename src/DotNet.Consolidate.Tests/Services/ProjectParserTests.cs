@@ -1,5 +1,6 @@
 using DotNet.Consolidate.Services;
 using DotNet.Consolidate.Tests.Helpers;
+
 using Xunit;
 
 namespace DotNet.Consolidate.Tests.Services

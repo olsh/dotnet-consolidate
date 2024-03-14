@@ -6,7 +6,14 @@ namespace DotNet.Consolidate.Models
 {
     public class Options
     {
-        public Options(ICollection<string>? solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds, string excludedPackageVersionsRegex, bool readDirectoryBuildProps, bool reportOverridenDirectoryBuildProps)
+        public Options(
+                       ICollection<string>? solutions,
+                       ICollection<string>? packageIds,
+                       ICollection<string>? excludedPackageIds,
+                       string excludedPackageVersionsRegex,
+                       bool readDirectoryBuildProps,
+                       bool reportOverridenDirectoryBuildProps,
+                       OutputFormat outputFormat)
         {
             Solutions = solutions;
             PackageIds = packageIds;
@@ -14,6 +21,7 @@ namespace DotNet.Consolidate.Models
             ExcludedPackageVersionsRegex = excludedPackageVersionsRegex;
             ReadDirectoryBuildProps = readDirectoryBuildProps;
             ReportOverridenDirectoryBuildProps = reportOverridenDirectoryBuildProps;
+            OutputFormat = outputFormat;
         }
 
         [Option('s', "solutions", Required = false, HelpText = "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
@@ -33,5 +41,8 @@ namespace DotNet.Consolidate.Models
 
         [Option('o', "reportOverridenDirectoryBuildProps", Required = false, Default = true, HelpText = "Report when csproj overrides a Directory.Build.props")]
         public bool ReportOverridenDirectoryBuildProps { get; }
+
+        [Option('f', "OutputFormat", Required = false, Default = OutputFormat.Text, HelpText = "Control output format.  Valid Values are : Text|Json.")]
+        public OutputFormat OutputFormat { get; }
     }
 }

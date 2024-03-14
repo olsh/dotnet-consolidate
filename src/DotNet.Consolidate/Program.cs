@@ -7,6 +7,7 @@ using CommandLine;
 
 using DotNet.Consolidate.Models;
 using DotNet.Consolidate.Services;
+using DotNet.Consolidate.Services.OutputWriters;
 
 namespace DotNet.Consolidate
 {
@@ -21,17 +22,44 @@ namespace DotNet.Consolidate
             }
         }
 
+        private static IOutputWriter GetOutputWriter(Options options)
+        {
+            switch (options.OutputFormat)
+            {
+                case OutputFormat.Json:
+                    return new JsonOutputWriter();
+                case OutputFormat.Text:
+                    return new TextOutputWriter();
+                default:
+                    throw new InvalidOperationException($"Output format {options.OutputFormat} is not supported");
+            }
+        }
+
         private static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args)
-                .WithParsed(Consolidate)
-                .WithNotParsed(HandleParseError);
+            Parser parser = new Parser(settings =>
+            {
+                settings.CaseInsensitiveEnumValues = true;
+                settings.CaseSensitive = false;
+            });
+
+            parser.ParseArguments<Options>(args)
+            .WithParsed(Consolidate)
+            .WithNotParsed(HandleParseError);
         }
 
         // ReSharper disable once CognitiveComplexity
         private static void Consolidate(Options options)
         {
-            var logger = new Logger();
+            ILogger logger = new Logger();
+            IOutputWriter outputWriter = GetOutputWriter(options);
+            Console.OutputEncoding = new System.Text.UTF8Encoding(false); // No BOM UTF8
+
+            if (options.OutputFormat == OutputFormat.Json)
+            {
+                logger.SupressMessages = true;
+            }
+
             if (options.ExcludedPackageIds?.Any() == true && options.PackageIds?.Any() == true)
             {
                 logger.Message("There is no sense to provide both `-p` and `-e` arguments at the same time.");
@@ -60,6 +88,7 @@ namespace DotNet.Consolidate
 
             var packagesAnalyzer = new PackagesAnalyzer();
 
+            Dictionary<SolutionInfo, IEnumerable<AnalysisResult>> solutionResults = new Dictionary<SolutionInfo, IEnumerable<AnalysisResult>>();
             foreach (var solutionInfo in solutionsInfo)
             {
                 logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
@@ -70,12 +99,14 @@ namespace DotNet.Consolidate
                     Environment.ExitCode = 1;
                 }
 
-                var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                logger.WriteAnalysisResults(nonConsolidatedPackages, solutionInfo, options);
-                if (nonConsolidatedPackages.Any())
-                {
-                    Environment.ExitCode = 1;
-                }
+                List<AnalysisResult> nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
+                solutionResults.Add(solutionInfo, nonConsolidatedPackages);
+            }
+
+            outputWriter.WriteAnalysisResults(solutionResults, options, Console.OpenStandardOutput());
+            if (solutionResults.SelectMany(sln => sln.Value).Any())
+            {
+                Environment.ExitCode = 1;
             }
         }
     }
