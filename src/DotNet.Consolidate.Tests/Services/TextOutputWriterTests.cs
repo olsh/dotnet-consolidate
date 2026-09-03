@@ -83,12 +83,14 @@ public class TextOutputWriterTests
             "The following package IDs given for consolidation check were not found in the solution projects:",
             text);
         Assert.Contains("NotReferenced", text);
+
+        // A missing package isn't a consolidated one, so the report must not claim otherwise.
+        Assert.DoesNotContain("are consolidated.", text);
     }
 
     [Fact]
-    public void Missing_package_ids_header_is_printed_even_when_nothing_is_missing()
+    public void Missing_package_ids_header_is_not_printed_when_nothing_is_missing()
     {
-        // Long-standing behaviour of the text report; kept so the output doesn't change.
         var output = new StringWriter();
         var writer = new TextOutputWriter(output);
 
@@ -101,9 +103,11 @@ public class TextOutputWriterTests
                 new List<string>()));
         writer.Flush();
 
-        Assert.Contains(
+        var text = output.ToString();
+        Assert.DoesNotContain(
             "The following package IDs given for consolidation check were not found in the solution projects:",
-            output.ToString());
+            text);
+        Assert.Contains("All packages from the list Serilog in My.sln are consolidated.", text);
     }
 
     private static SolutionAnalysisResult CreateResult(string solutionFile, params AnalysisResult[] packages)

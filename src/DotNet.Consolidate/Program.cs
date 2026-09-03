@@ -123,8 +123,12 @@ namespace DotNet.Consolidate
 
                 var nonConsolidatedPackages =
                     packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                outputWriter.WriteAnalysisResults(CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options));
-                if (nonConsolidatedPackages.Any())
+                var analysisResult = CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options);
+                outputWriter.WriteAnalysisResults(analysisResult);
+
+                // A `-p` package that no project references is a failure too: it's usually a typo, and exiting 0
+                // would let it pass a build silently.
+                if (nonConsolidatedPackages.Any() || analysisResult.PackageIdsNotFoundInSolution.Any())
                 {
                     Environment.ExitCode = 1;
                 }

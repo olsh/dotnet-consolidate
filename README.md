@@ -58,6 +58,8 @@ With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, a
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
+A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.
+
 To get machine-readable output instead of the report, ask for the JSON format:
 
 `dotnet consolidate -s YourSolution.sln -f json`

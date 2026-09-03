@@ -4,7 +4,7 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## What this is
 
-`dotnet-consolidate` is a .NET global tool (`dotnet consolidate`) that parses a solution's projects and reports NuGet packages referenced at more than one version. Non-consolidated packages (or a solution that failed to parse) set `Environment.ExitCode = 1`.
+`dotnet-consolidate` is a .NET global tool (`dotnet consolidate`) that parses a solution's projects and reports NuGet packages referenced at more than one version. Non-consolidated packages, a `-p` package ID that no project references, or a solution that failed to parse set `Environment.ExitCode = 1`.
 
 ## Build & test
 
@@ -59,7 +59,7 @@ Everything is instantiated by hand in `Program.cs` — no DI container. The pipe
 6. **Output** — two separate paths, deliberately. **`ILogger`** reports what happened along the way: `Message` for things the user needs to know (a file that wouldn't parse, an unusable argument), `Progress` for the purely cosmetic `Analyzing packages in …` line. **`IOutputWriter`** renders the results, and `Program` hands it a `SolutionAnalysisResult` per solution — the writers depend on neither `SolutionInfo` nor `Options`, which is what lets them be tested without parsing anything. `OutputWriterFactory.Create` picks the implementation from `--format`.
    - `TextOutputWriter` streams each solution as it is analyzed; its `Flush` does nothing. `JsonOutputWriter` buffers and emits one document in `Flush`, because several solutions have to end up in the same document. `Flush` is also called on the early argument-error returns so `-f json` always produces a parseable document.
    - **`-f json` never writes to stderr**, and it isn't allowed to interleave anything with the document either: `Program` swaps in `CollectingLogger`, which drops `Progress` and collects `Message` into the document's `warnings`. Redirecting messages to stderr was tried and rejected — some CI systems fail a build on any stderr output.
-   - The JSON shape lives in `Models/JsonReport.cs` as its own DTOs rather than being serialized off the domain models, so refactoring internals can't silently break whoever scripts against the output. Text output is expected to stay byte-identical; `TextOutputWriterTests` guards it.
+   - The JSON shape lives in `Models/JsonReport.cs` as its own DTOs rather than being serialized off the domain models, so refactoring internals can't silently break whoever scripts against the output. The text report is covered by `TextOutputWriterTests`; changing what it prints should be deliberate and reflected there.
 
 ### Version comparison
 
