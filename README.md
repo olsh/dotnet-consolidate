@@ -64,6 +64,19 @@ With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, a
 
 Give the option a value rather than writing a bare `-d`; on its own it reads whatever follows it as its value.
 
+When a project declares a package that its `Directory.Build.props` already declares, the project file wins and the central version stops applying to it. That is reported too, with both versions and the props file to go and change:
+
+```
+Found 1 Directory.Build.props overrides
+
+----------------------------
+Serilog
+----------------------------
+ProjectB - 4.0.0 overrides 3.0.1 from C:\src\MySolution\Directory.Build.props
+```
+
+The overlap is reported even when the two versions match, since the copy in the project file silently stops following the props file the next time it is bumped. It is informational — an override never changes the exit code — and it is on by default; turn it off with `-o false` (or `--reportOverridenDirectoryBuildProps false`), and note that `-d false` switches it off along with everything else about `Directory.Build.props`. Only a re-declared `Include` is detected; `<PackageReference Update="..." />` is not read by the tool at all.
+
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
 A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.
@@ -91,6 +104,15 @@ stdout then carries a single JSON document and nothing else — progress message
             { "projectName": "ProjectA", "version": "11.0.2" },
             { "projectName": "ProjectB", "version": "13.0.3" }
           ]
+        }
+      ],
+      "directoryBuildPropsOverrides": [
+        {
+          "packageId": "Serilog",
+          "projectName": "ProjectB",
+          "version": "4.0.0",
+          "directoryBuildPropsVersion": "3.0.1",
+          "directoryBuildPropsFile": "C:\\src\\MySolution\\Directory.Build.props"
         }
       ]
     }

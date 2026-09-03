@@ -265,6 +265,56 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Equal(new[] { "CommandLineParser 2.7.82", "Serilog 3.0.1" }, inheritedPackages);
         }
 
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Each_project_records_the_DirectoryBuildProps_file_it_inherits_from(string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            // The nearest ancestor, which is the same file the inherited packages came from — reporting an
+            // override is no use without naming the props file to go and change.
+            var projectATests = solution.ProjectInfos.First(p => p.ProjectName.Equals("ProjectA.Tests"));
+            Assert.Equal(
+                Path.Join(TestSolutionDirectoryName, "tests", "Directory.build.props"),
+                projectATests.DirectoryBuildPropsFile);
+
+            // tests-integration\ is a sibling of tests\, so this one inherits from the solution root instead.
+            var integrationTests = solution.ProjectInfos.First(p => p.ProjectName.Equals("IntegrationTests"));
+            Assert.Equal(
+                Path.Join(TestSolutionDirectoryName, "Directory.build.props"),
+                integrationTests.DirectoryBuildPropsFile);
+        }
+
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void No_DirectoryBuildProps_file_is_recorded_when_they_are_not_read(string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+            Assert.All(solution.ProjectInfos, p => Assert.Null(p.DirectoryBuildPropsFile));
+        }
+
         private static string TestSolutionFileName(string solutionFileName) =>
             Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
