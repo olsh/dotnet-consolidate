@@ -50,6 +50,8 @@ Alternatively, you can configure the opposite, package IDs that should be skippe
 
 `dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
 
+Both options match package IDs case-insensitively, the way NuGet itself treats them, so `-p serilog` matches a `Serilog` reference.
+
 It's also possible to skip a pattern of versions during consolidation with a regular expression:
 
 `dotnet consolidate -s YourSolution.sln --excludedVersionsRegex .*-alpha$`
