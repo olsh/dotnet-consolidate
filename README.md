@@ -68,6 +68,8 @@ If the tool finds discrepancies between projects (only the specified ones if -p 
 
 A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.
 
+A command line the tool can't parse — an unknown option, or one repeated where it takes a space-separated list — exits with a non-success status code too, for the same reason: nothing was checked, so a green build would be a lie. The complaint is written to stderr. `--help` and `--version` are requests that were satisfied, not failures, and still exit successfully.
+
 To get machine-readable output instead of the report, ask for the JSON format:
 
 `dotnet consolidate -s YourSolution.sln -f json`
@@ -93,6 +95,17 @@ stdout then carries a single JSON document and nothing else — progress message
       ]
     }
   ]
+}
+```
+
+A command line the tool rejects produces that same document rather than nothing at all — the parser's complaint in `warnings`, an empty `solutions`, and a non-success status code:
+
+```json
+{
+  "warnings": [
+    "Option 'p, packageIds' is defined multiple times."
+  ],
+  "solutions": []
 }
 ```
 
