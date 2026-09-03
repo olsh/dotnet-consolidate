@@ -12,10 +12,11 @@ namespace DotNet.Consolidate.Services
     /// </summary>
     /// <remarks>
     /// Anything outside that subset is reported as unevaluatable rather than guessed at, so that a caller can keep
-    /// the affected items instead of dropping them. Operands are evaluated eagerly, without the short-circuiting
-    /// MSBuild does; that can only turn a condition unevaluatable, never flip a result.
+    /// the affected items instead of dropping them. Internally that is a <see langword="null"/> result travelling up
+    /// the parser. Operands are evaluated eagerly, without the short-circuiting MSBuild does; that can only turn a
+    /// condition unevaluatable, never flip a result.
     /// </remarks>
-    public class ConditionEvaluator
+    public static class ConditionEvaluator
     {
         private enum TokenType
         {
@@ -51,7 +52,7 @@ namespace DotNet.Consolidate.Services
         /// <param name="properties">The properties used to expand <c>$(Name)</c> references.</param>
         /// <param name="result">The evaluated result, or <see langword="true"/> when the condition is unevaluatable.</param>
         /// <returns><see langword="false"/> when the condition falls outside the supported subset.</returns>
-        public bool TryEvaluate(string? condition, MSBuildProperties properties, out bool result)
+        public static bool TryEvaluate(string? condition, MSBuildProperties properties, out bool result)
         {
             result = true;
             if (string.IsNullOrWhiteSpace(condition))
@@ -59,22 +60,15 @@ namespace DotNet.Consolidate.Services
                 return true;
             }
 
-            try
+            var evaluated = ConditionParser.Evaluate(condition, properties);
+            if (evaluated == null)
             {
-                result = new ConditionParser(condition!, properties).Evaluate();
-
-                return true;
-            }
-            catch (UnsupportedConditionException)
-            {
-                result = true;
-
                 return false;
             }
-        }
 
-        private sealed class UnsupportedConditionException : Exception
-        {
+            result = evaluated.Value;
+
+            return true;
         }
 
         private sealed class Token
@@ -96,6 +90,10 @@ namespace DotNet.Consolidate.Services
 
             private const string HasTrailingSlashFunctionName = "HasTrailingSlash";
 
+            private const string AndKeyword = "and";
+
+            private const string OrKeyword = "or";
+
             private const string TrueText = "true";
 
             private const string FalseText = "false";
@@ -106,23 +104,24 @@ namespace DotNet.Consolidate.Services
 
             private int _position;
 
-            public ConditionParser(string condition, MSBuildProperties properties)
+            private ConditionParser(List<Token> tokens, MSBuildProperties properties)
             {
+                _tokens = tokens;
                 _properties = properties;
-                _tokens = Tokenize(condition);
             }
 
-            private Token Current => _tokens[_position];
+            /// <summary>The token at the cursor, clamped to the terminating <see cref="TokenType.End"/>.</summary>
+            private Token Current => _tokens[_position < _tokens.Count ? _position : _tokens.Count - 1];
 
-            public bool Evaluate()
+            /// <returns>The result, or <see langword="null"/> when the condition cannot be evaluated.</returns>
+            public static bool? Evaluate(string condition, MSBuildProperties properties)
             {
-                var result = ParseOr();
-                Expect(TokenType.End);
+                var tokens = Tokenize(condition);
 
-                return result;
+                return tokens == null ? null : new ConditionParser(tokens, properties).Parse();
             }
 
-            private static List<Token> Tokenize(string condition)
+            private static List<Token>? Tokenize(string condition)
             {
                 var tokens = new List<Token>();
                 var index = 0;
@@ -136,50 +135,57 @@ namespace DotNet.Consolidate.Services
                         continue;
                     }
 
+                    Token? token;
                     switch (character)
                     {
                         case '(':
-                            tokens.Add(new Token(TokenType.LeftParenthesis, "("));
+                            token = new Token(TokenType.LeftParenthesis, "(");
                             index++;
 
-                            continue;
+                            break;
                         case ')':
-                            tokens.Add(new Token(TokenType.RightParenthesis, ")"));
+                            token = new Token(TokenType.RightParenthesis, ")");
                             index++;
 
-                            continue;
+                            break;
                         case '\'':
-                            tokens.Add(ReadQuotedText(condition, ref index));
+                            token = ReadQuotedText(condition, ref index);
 
-                            continue;
+                            break;
                         case '!':
-                            tokens.Add(
-                                Matches(condition, index + 1, '=')
-                                    ? new Token(TokenType.NotEqual, "!=")
-                                    : new Token(TokenType.Not, "!"));
-                            index += tokens[^1].Text.Length;
+                            token = Matches(condition, index + 1, '=')
+                                ? new Token(TokenType.NotEqual, "!=")
+                                : new Token(TokenType.Not, "!");
+                            index += token.Text.Length;
 
-                            continue;
+                            break;
                         case '=':
                             if (!Matches(condition, index + 1, '='))
                             {
-                                throw new UnsupportedConditionException();
+                                return null;
                             }
 
-                            tokens.Add(new Token(TokenType.Equal, "=="));
+                            token = new Token(TokenType.Equal, "==");
                             index += 2;
 
-                            continue;
+                            break;
                         case '<':
                         case '>':
-                            tokens.Add(ReadRelationalOperator(condition, ref index));
+                            token = ReadRelationalOperator(condition, ref index);
 
-                            continue;
+                            break;
                         default:
-                            tokens.Add(ReadBareText(condition, ref index));
+                            token = ReadBareText(condition, ref index);
 
-                            continue;
+                            break;
                     }
+
+                    if (token == null)
+                    {
+                        return null;
+                    }
+
+                    tokens.Add(token);
                 }
 
                 tokens.Add(new Token(TokenType.End, string.Empty));
@@ -192,12 +198,12 @@ namespace DotNet.Consolidate.Services
                 return index < condition.Length && condition[index] == character;
             }
 
-            private static Token ReadQuotedText(string condition, ref int index)
+            private static Token? ReadQuotedText(string condition, ref int index)
             {
                 var closingQuote = condition.IndexOf('\'', index + 1);
                 if (closingQuote < 0)
                 {
-                    throw new UnsupportedConditionException();
+                    return null;
                 }
 
                 var text = condition.Substring(index + 1, closingQuote - index - 1);
@@ -221,7 +227,7 @@ namespace DotNet.Consolidate.Services
                 return new Token(isLess ? TokenType.Less : TokenType.Greater, isLess ? "<" : ">");
             }
 
-            private static Token ReadBareText(string condition, ref int index)
+            private static Token? ReadBareText(string condition, ref int index)
             {
                 var start = index;
                 while (index < condition.Length)
@@ -232,7 +238,13 @@ namespace DotNet.Consolidate.Services
                     // mistaken for grouping parentheses.
                     if (character == '$' && Matches(condition, index + 1, '('))
                     {
-                        index = SkipBalancedParentheses(condition, index + 1);
+                        var end = SkipBalancedParentheses(condition, index + 1);
+                        if (end < 0)
+                        {
+                            return null;
+                        }
+
+                        index = end;
 
                         continue;
                     }
@@ -245,14 +257,10 @@ namespace DotNet.Consolidate.Services
                     index++;
                 }
 
-                if (index == start)
-                {
-                    throw new UnsupportedConditionException();
-                }
-
-                return new Token(TokenType.BareText, condition.Substring(start, index - start));
+                return index == start ? null : new Token(TokenType.BareText, condition.Substring(start, index - start));
             }
 
+            /// <returns>The index just past the matching parenthesis, or -1 when it is unbalanced.</returns>
             private static int SkipBalancedParentheses(string condition, int openingParenthesis)
             {
                 var depth = 0;
@@ -272,10 +280,14 @@ namespace DotNet.Consolidate.Services
                     }
                 }
 
-                throw new UnsupportedConditionException();
+                return -1;
             }
 
-            private static bool TryParseNumber(string text, out double number)
+            /// <remarks>
+            /// Deliberately <see cref="decimal"/> rather than <see cref="double"/>: the values are literals out of a
+            /// project file, and they are compared for exact equality.
+            /// </remarks>
+            private static bool TryParseNumber(string text, out decimal number)
             {
                 number = 0;
                 if (string.IsNullOrWhiteSpace(text))
@@ -284,28 +296,26 @@ namespace DotNet.Consolidate.Services
                 }
 
                 var trimmed = text.Trim();
-                if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                if (!trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
                 {
-                    try
-                    {
-                        number = Convert.ToInt64(trimmed.Substring(2), 16);
-
-                        return true;
-                    }
-                    catch (FormatException)
-                    {
-                        return false;
-                    }
-                    catch (OverflowException)
-                    {
-                        return false;
-                    }
+                    return decimal.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
                 }
 
-                return double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+                if (!long.TryParse(
+                        trimmed.Substring(2),
+                        NumberStyles.HexNumber,
+                        CultureInfo.InvariantCulture,
+                        out var hexValue))
+                {
+                    return false;
+                }
+
+                number = hexValue;
+
+                return true;
             }
 
-            private static bool ToBoolean(string text)
+            private static bool? ToBoolean(string text)
             {
                 if (string.Equals(text, TrueText, StringComparison.OrdinalIgnoreCase)
                     || string.Equals(text, "on", StringComparison.OrdinalIgnoreCase)
@@ -321,101 +331,128 @@ namespace DotNet.Consolidate.Services
                     return false;
                 }
 
-                throw new UnsupportedConditionException();
+                return null;
             }
 
-            private static bool Compare(TokenType comparison, string left, string right)
+            private static bool? Compare(TokenType comparison, string left, string right)
             {
+                var isLeftNumber = TryParseNumber(left, out var leftNumber);
+                var isRightNumber = TryParseNumber(right, out var rightNumber);
+
                 if (comparison == TokenType.Equal || comparison == TokenType.NotEqual)
                 {
-                    var areEqual = TryParseNumber(left, out var leftNumber) &&
-                                   TryParseNumber(right, out var rightNumber)
-                        ? leftNumber.Equals(rightNumber)
+                    var areEqual = isLeftNumber && isRightNumber
+                        ? leftNumber == rightNumber
                         : string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 
                     return comparison == TokenType.Equal ? areEqual : !areEqual;
                 }
 
-                if (!TryParseNumber(left, out var first) || !TryParseNumber(right, out var second))
+                if (!isLeftNumber || !isRightNumber)
                 {
-                    throw new UnsupportedConditionException();
+                    return null;
                 }
 
                 return comparison switch
                 {
-                    TokenType.Less => first < second,
-                    TokenType.LessOrEqual => first <= second,
-                    TokenType.Greater => first > second,
-                    TokenType.GreaterOrEqual => first >= second,
-                    _ => throw new UnsupportedConditionException(),
+                    TokenType.Less => leftNumber < rightNumber,
+                    TokenType.LessOrEqual => leftNumber <= rightNumber,
+                    TokenType.Greater => leftNumber > rightNumber,
+                    TokenType.GreaterOrEqual => leftNumber >= rightNumber,
+                    _ => null,
                 };
             }
 
-            private bool ParseOr()
+            private bool? Parse()
+            {
+                var result = ParseOr();
+
+                return result == null || Current.Type != TokenType.End ? null : result;
+            }
+
+            private bool? ParseOr()
             {
                 var result = ParseAnd();
-                while (IsKeyword("or"))
+                while (result != null && IsKeyword(OrKeyword))
                 {
                     _position++;
-                    result = ParseAnd() || result;
+                    var right = ParseAnd();
+                    if (right == null)
+                    {
+                        return null;
+                    }
+
+                    result = result.Value || right.Value;
                 }
 
                 return result;
             }
 
-            private bool ParseAnd()
+            private bool? ParseAnd()
             {
                 var result = ParseUnary();
-                while (IsKeyword("and"))
+                while (result != null && IsKeyword(AndKeyword))
                 {
                     _position++;
-                    result = ParseUnary() && result;
+                    var right = ParseUnary();
+                    if (right == null)
+                    {
+                        return null;
+                    }
+
+                    result = result.Value && right.Value;
                 }
 
                 return result;
             }
 
-            private bool ParseUnary()
+            private bool? ParseUnary()
             {
-                if (Current.Type == TokenType.Not)
+                if (Current.Type != TokenType.Not)
                 {
-                    _position++;
-
-                    return !ParseUnary();
+                    return ParsePrimary();
                 }
 
-                return ParsePrimary();
+                _position++;
+                var value = ParseUnary();
+
+                return value == null ? null : !value.Value;
             }
 
-            private bool ParsePrimary()
+            private bool? ParsePrimary()
             {
                 if (Current.Type == TokenType.LeftParenthesis)
                 {
                     _position++;
-                    var result = ParseOr();
-                    Expect(TokenType.RightParenthesis);
+                    var grouped = ParseOr();
 
-                    return result;
+                    return grouped == null || !Consume(TokenType.RightParenthesis) ? null : grouped;
                 }
 
                 var left = ParseOperand();
-                var comparison = Current.Type;
-                if (comparison is TokenType.Equal or TokenType.NotEqual or TokenType.Less or TokenType.LessOrEqual
-                    or TokenType.Greater or TokenType.GreaterOrEqual)
+                if (left == null)
                 {
-                    _position++;
-
-                    return Compare(comparison, left, ParseOperand());
+                    return null;
                 }
 
-                return ToBoolean(left);
+                var comparison = Current.Type;
+                if (comparison is not (TokenType.Equal or TokenType.NotEqual or TokenType.Less or TokenType.LessOrEqual
+                    or TokenType.Greater or TokenType.GreaterOrEqual))
+                {
+                    return ToBoolean(left);
+                }
+
+                _position++;
+                var right = ParseOperand();
+
+                return right == null ? null : Compare(comparison, left, right);
             }
 
             /// <summary>
             /// Reads one operand and returns its expanded text. Function calls produce <c>true</c>/<c>false</c>, so
             /// that they can be used both as a standalone boolean and as one side of a comparison.
             /// </summary>
-            private string ParseOperand()
+            private string? ParseOperand()
             {
                 var token = Current;
                 if (token.Type == TokenType.QuotedText)
@@ -427,7 +464,7 @@ namespace DotNet.Consolidate.Services
 
                 if (token.Type != TokenType.BareText)
                 {
-                    throw new UnsupportedConditionException();
+                    return null;
                 }
 
                 _position++;
@@ -438,11 +475,16 @@ namespace DotNet.Consolidate.Services
 
                 _position++;
                 var argument = ParseOperand();
-                Expect(TokenType.RightParenthesis);
+                if (argument == null || !Consume(TokenType.RightParenthesis))
+                {
+                    return null;
+                }
 
                 if (string.Equals(token.Text, ExistsFunctionName, StringComparison.OrdinalIgnoreCase))
                 {
-                    return Exists(argument) ? TrueText : FalseText;
+                    var exists = Exists(argument);
+
+                    return exists == null ? null : exists.Value ? TrueText : FalseText;
                 }
 
                 if (string.Equals(token.Text, HasTrailingSlashFunctionName, StringComparison.OrdinalIgnoreCase))
@@ -450,10 +492,10 @@ namespace DotNet.Consolidate.Services
                     return argument.EndsWith('/') || argument.EndsWith('\\') ? TrueText : FalseText;
                 }
 
-                throw new UnsupportedConditionException();
+                return null;
             }
 
-            private bool Exists(string path)
+            private bool? Exists(string path)
             {
                 if (string.IsNullOrWhiteSpace(path))
                 {
@@ -464,7 +506,7 @@ namespace DotNet.Consolidate.Services
                 if (projectDirectory == null)
                 {
                     // Without a project file on disk there is nothing to resolve a relative path against.
-                    throw new UnsupportedConditionException();
+                    return null;
                 }
 
                 try
@@ -486,15 +528,11 @@ namespace DotNet.Consolidate.Services
                 }
             }
 
-            private string Expand(string text)
+            private string? Expand(string text)
             {
                 var expanded = _properties.Expand(text, out var hasUnsupportedSyntax);
-                if (hasUnsupportedSyntax)
-                {
-                    throw new UnsupportedConditionException();
-                }
 
-                return expanded;
+                return hasUnsupportedSyntax ? null : expanded;
             }
 
             private bool IsKeyword(string keyword)
@@ -503,14 +541,16 @@ namespace DotNet.Consolidate.Services
                        && string.Equals(Current.Text, keyword, StringComparison.OrdinalIgnoreCase);
             }
 
-            private void Expect(TokenType type)
+            private bool Consume(TokenType type)
             {
                 if (Current.Type != type)
                 {
-                    throw new UnsupportedConditionException();
+                    return false;
                 }
 
                 _position++;
+
+                return true;
             }
         }
     }

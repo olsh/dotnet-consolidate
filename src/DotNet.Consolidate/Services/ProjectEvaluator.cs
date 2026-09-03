@@ -32,8 +32,6 @@ namespace DotNet.Consolidate.Services
 
         private const string IncludeAttributeName = "Include";
 
-        private readonly ConditionEvaluator _conditionEvaluator = new ConditionEvaluator();
-
         private readonly ILogger _logger;
 
         private readonly IReadOnlyDictionary<string, string>? _globalProperties;
@@ -183,7 +181,7 @@ namespace DotNet.Consolidate.Services
                 return true;
             }
 
-            if (_conditionEvaluator.TryEvaluate(condition, properties, out var result))
+            if (ConditionEvaluator.TryEvaluate(condition, properties, out var result))
             {
                 return result;
             }

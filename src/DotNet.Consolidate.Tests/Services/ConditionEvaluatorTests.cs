@@ -101,12 +101,10 @@ namespace DotNet.Consolidate.Tests.Services
                 "ProjectA",
                 "ProjectA.csproj");
             var properties = new MSBuildProperties(null, projectFilePath);
-            var evaluator = new ConditionEvaluator();
-
-            Assert.True(evaluator.TryEvaluate("Exists('ProjectA.csproj')", properties, out var exists));
+            Assert.True(ConditionEvaluator.TryEvaluate("Exists('ProjectA.csproj')", properties, out var exists));
             Assert.True(exists);
 
-            Assert.True(evaluator.TryEvaluate("Exists('NotThere.csproj')", properties, out var missing));
+            Assert.True(ConditionEvaluator.TryEvaluate("Exists('NotThere.csproj')", properties, out var missing));
             Assert.False(missing);
         }
 
@@ -120,9 +118,10 @@ namespace DotNet.Consolidate.Tests.Services
         [InlineData("'a' > 'b'")]
         public void Unsupported_expression_is_reported_as_unevaluatable(string condition)
         {
-            var evaluator = new ConditionEvaluator();
-
-            var isEvaluated = evaluator.TryEvaluate(condition, new MSBuildProperties(null, null), out var result);
+            var isEvaluated = ConditionEvaluator.TryEvaluate(
+                condition,
+                new MSBuildProperties(null, null),
+                out var result);
 
             Assert.False(isEvaluated);
 
@@ -132,11 +131,10 @@ namespace DotNet.Consolidate.Tests.Services
 
         private static bool Evaluate(string condition, IReadOnlyDictionary<string, string> globalProperties = null)
         {
-            var evaluator = new ConditionEvaluator();
             var properties = new MSBuildProperties(globalProperties, null);
 
             Assert.True(
-                evaluator.TryEvaluate(condition, properties, out var result),
+                ConditionEvaluator.TryEvaluate(condition, properties, out var result),
                 $"The condition `{condition}` was not evaluated.");
 
             return result;

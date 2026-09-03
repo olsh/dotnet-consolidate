@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace DotNet.Consolidate.Services
@@ -32,7 +33,7 @@ namespace DotNet.Consolidate.Services
 
             if (!string.IsNullOrWhiteSpace(projectFilePath))
             {
-                _projectFilePath = Path.GetFullPath(PathUtils.EnsureSystemSeparator(projectFilePath!));
+                _projectFilePath = Path.GetFullPath(PathUtils.EnsureSystemSeparator(projectFilePath));
                 ProjectDirectory = Path.GetDirectoryName(_projectFilePath);
             }
 
@@ -152,15 +153,7 @@ namespace DotNet.Consolidate.Services
                 return false;
             }
 
-            foreach (var character in name)
-            {
-                if (!char.IsLetterOrDigit(character) && character != '_' && character != '-')
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            return name.All(character => char.IsLetterOrDigit(character) || character == '_' || character == '-');
         }
 
         private void SetReservedProperties()
