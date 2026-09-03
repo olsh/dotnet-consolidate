@@ -59,6 +59,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      Deliberately a sibling of tests\ whose name starts with "tests": a project here inherits from the
+      solution root, but a bare string prefix match hands it tests\Directory.build.props instead.
+    -->
+    <None Include="TestData\TestSolution\tests-integration\IntegrationTests\IntegrationTests.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="TestData\TestSolution\TestSolution.sln">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

@@ -85,7 +85,7 @@ namespace DotNet.Consolidate.Services
             {
                 var projectDirectory = ResolveDirectory(projectInfo.ProjectDirectory);
                 var directoryBuildProps = candidates
-                    .FirstOrDefault(dbp => projectDirectory.StartsWith(dbp.Directory))
+                    .FirstOrDefault(dbp => PathUtils.IsSameOrUnderDirectory(projectDirectory, dbp.Directory))
                     ?.Props;
 
                 if (directoryBuildProps != null)

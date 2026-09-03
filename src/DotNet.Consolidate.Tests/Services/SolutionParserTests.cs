@@ -228,6 +228,36 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Contains(projectB.Packages, p => p.Id == "Serilog");
         }
 
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_project_does_not_inherit_from_a_sibling_directory_sharing_a_name_prefix(
+            string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            // tests-integration\ is a sibling of tests\, not a child of it, so IntegrationTests inherits from
+            // the solution root. A bare string prefix match claimed it for tests\Directory.build.props, which
+            // also wins the longest-first ordering, and the project silently got the wrong versions.
+            var integrationTests = solution.ProjectInfos
+                .FirstOrDefault(p => p.ProjectName.Equals("IntegrationTests"));
+
+            Assert.NotNull(integrationTests);
+            Assert.Equal(
+                2,
+                integrationTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Contains(integrationTests.Packages, p => p.Id == "Serilog");
+            Assert.DoesNotContain(integrationTests.Packages, p => p.Id == "NUnit");
+        }
+
         private static string TestSolutionFileName(string solutionFileName) =>
             Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
