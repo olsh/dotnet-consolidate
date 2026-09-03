@@ -354,3 +354,6 @@ tools/*
 
 # SonarQube
 .sonarqube/
+
+# JetBrains Rider
+.idea/
