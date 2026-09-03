@@ -140,24 +140,18 @@ namespace DotNet.Consolidate.Services
 
         /// <remarks>
         /// <b>Intersected</b>, where the other two are unioned: a package dropped for one target framework and
-        /// kept for another is still referenced by the project.
+        /// kept for another is still referenced by the project. Counting the passes that name an ID is the
+        /// same test — a pass holds its removals in a set, so it can name one at most once — and it says the
+        /// rule the way <see cref="MergeUpdates"/> does.
         /// </remarks>
         private static IReadOnlyCollection<string> MergeRemovedPackageIds(IReadOnlyList<EvaluationPass> passes)
         {
-            HashSet<string>? removedPackageIds = null;
-            foreach (var pass in passes)
-            {
-                if (removedPackageIds == null)
-                {
-                    removedPackageIds = new HashSet<string>(pass.RemovedPackageIds, NuGetPackageInfo.IdComparer);
-                }
-                else
-                {
-                    removedPackageIds.IntersectWith(pass.RemovedPackageIds);
-                }
-            }
-
-            return removedPackageIds ?? new HashSet<string>(NuGetPackageInfo.IdComparer);
+            return passes
+                .SelectMany(pass => pass.RemovedPackageIds)
+                .GroupBy(id => id, NuGetPackageInfo.IdComparer)
+                .Where(ids => ids.Count() == passes.Count)
+                .Select(ids => ids.Key)
+                .ToList();
         }
 
         /// <summary>
