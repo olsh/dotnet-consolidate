@@ -13,10 +13,12 @@ namespace DotNet.Consolidate.Models
     /// attributes, so an instance built in code behaves like one built from a command line.
     /// <para>
     /// A <c>bool</c> property is a switch to CommandLineParser and can never be given a value, which is why the
-    /// toggles below are declared <c>bool?</c>: that makes them scalars, and a scalar is what lets <c>-d false</c>
-    /// turn one off. Declaring either as a plain <c>bool</c> silently turns it back into a switch that can only
-    /// ever be on. The nullability is that mechanism and nothing more — <c>Default</c> still supplies <c>true</c>
-    /// when the option is omitted, so the value is never actually <c>null</c>.
+    /// toggles that default to <c>true</c> are declared <c>bool?</c>: that makes them scalars, and a scalar is
+    /// what lets <c>-d false</c> turn one off. Declaring either as a plain <c>bool</c> silently turns it back
+    /// into a switch that can only ever be on. The nullability is that mechanism and nothing more —
+    /// <c>Default</c> still supplies <c>true</c> when the option is omitted, so the value is never actually
+    /// <c>null</c>. A toggle that defaults to off wants the opposite: it only ever needs turning on, so a plain
+    /// <c>bool</c> is right for it, and it keeps the bare form from swallowing the token that follows.
     /// </para>
     /// </remarks>
     public class Options
@@ -28,6 +30,17 @@ namespace DotNet.Consolidate.Models
             HelpText =
                 "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
         public ICollection<string>? Solutions { get; init; }
+
+        /// <remarks>
+        /// A plain <c>bool</c>, unlike the toggles below — see the class remarks.
+        /// </remarks>
+        [Option(
+            'c',
+            "crossSolution",
+            Required = false,
+            HelpText =
+                "Analyze the given solutions as one set, so a package referenced at different versions by projects in different solutions is reported too.")]
+        public bool CrossSolution { get; init; }
 
         [Option('p', "packageIds", Required = false, HelpText = "Package IDs for checking.")]
         public ICollection<string>? PackageIds { get; init; }

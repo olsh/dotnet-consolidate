@@ -1,10 +1,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 
 using DotNet.Consolidate.Models;
 using DotNet.Consolidate.Services;
+using DotNet.Consolidate.Tests.Helpers;
 
 using Xunit;
 
@@ -14,12 +14,7 @@ namespace DotNet.Consolidate.Tests.Services
 {
     public class SolutionParserTests
     {
-        private static string TestSolutionDirectoryName => Path.Join(
-            new FileInfo(
-                Assembly.GetExecutingAssembly()
-                    .Location).DirectoryName,
-            "TestData",
-            "TestSolution");
+        private static string TestSolutionDirectoryName => FileHelper.TestSolutionDirectory;
 
         [Theory]
         [InlineData("TestSolution.sln")]

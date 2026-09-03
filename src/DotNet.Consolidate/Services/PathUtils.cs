@@ -34,6 +34,20 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <summary>
+        /// Resolves a directory to an absolute path, so that two spellings of the same directory compare equal.
+        /// </summary>
+        /// <remarks>
+        /// A project sitting next to a solution passed as a bare file name has no directory part at all, and
+        /// <see cref="Path.GetFullPath(string)"/> rejects an empty string.
+        /// </remarks>
+        /// <param name="directory">The directory to resolve, absolute or relative to the working directory.</param>
+        /// <returns>The absolute path of the directory.</returns>
+        public static string ResolveDirectory(string directory)
+        {
+            return Path.GetFullPath(string.IsNullOrEmpty(directory) ? "." : directory);
+        }
+
+        /// <summary>
         /// Determines whether <paramref name="directory"/> is <paramref name="ancestorDirectory"/> itself,
         /// or sits underneath it.
         /// </summary>

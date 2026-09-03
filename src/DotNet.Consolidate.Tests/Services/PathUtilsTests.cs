@@ -83,5 +83,32 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.True(PathUtils.IsSameOrUnderDirectory(root, root));
             Assert.True(PathUtils.IsSameOrUnderDirectory(Path.Combine(root, "src", "Project"), root));
         }
+
+        [Fact]
+        public void A_resolved_directory_is_absolute()
+        {
+            var resolved = PathUtils.ResolveDirectory(Path.Combine("src", "Project"));
+
+            Assert.True(Path.IsPathRooted(resolved));
+            Assert.Equal(Path.Combine(Directory.GetCurrentDirectory(), "src", "Project"), resolved);
+        }
+
+        [Fact]
+        public void Two_spellings_of_the_same_directory_resolve_to_the_same_path()
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath("."));
+
+            Assert.Equal(
+                PathUtils.ResolveDirectory(Path.Combine(root, "src", "Project")),
+                PathUtils.ResolveDirectory(Path.Combine(root, "src", "Other", "..", "Project")));
+        }
+
+        [Fact]
+        public void An_empty_directory_resolves_to_the_working_directory()
+        {
+            // A project sitting next to a solution passed as a bare file name has no directory part at all, and
+            // Path.GetFullPath throws on an empty string.
+            Assert.Equal(Directory.GetCurrentDirectory(), PathUtils.ResolveDirectory(string.Empty));
+        }
     }
 }

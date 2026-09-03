@@ -52,6 +52,26 @@ public class TextOutputWriterTests
     }
 
     [Fact]
+    public void Every_solution_the_report_covers_is_named_in_the_consolidated_message()
+    {
+        var output = new StringWriter();
+        var writer = new TextOutputWriter(output);
+
+        // What `-c` produces: one report for the whole set rather than one per solution.
+        writer.WriteAnalysisResults(
+            new SolutionAnalysisResult(
+                new[] { "cms.sln", "TheSite.sln" },
+                isParsedWithoutIssues: true,
+                new List<AnalysisResult>(),
+                new List<string>(),
+                new List<string>(),
+                new List<DirectoryBuildPropsOverride>()));
+        writer.Flush();
+
+        Assert.Contains("All packages in cms.sln, TheSite.sln are consolidated.", output.ToString());
+    }
+
+    [Fact]
     public void Requested_package_ids_are_named_in_the_consolidated_message()
     {
         var output = new StringWriter();

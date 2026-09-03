@@ -28,6 +28,7 @@ public class OptionsTests
             ".*-alpha$",
             "--property",
             "NuGetBuild=true",
+            "--crossSolution",
             "-f",
             "json");
 
@@ -36,6 +37,7 @@ public class OptionsTests
         Assert.Equal(new[] { "Moq" }, options.ExcludedPackageIds);
         Assert.Equal(".*-alpha$", options.ExcludedPackageVersionsRegex);
         Assert.Equal(new[] { "NuGetBuild=true" }, options.GlobalProperties);
+        Assert.True(options.CrossSolution);
         Assert.Equal(OutputFormat.Json, options.Format);
     }
 
@@ -114,6 +116,20 @@ public class OptionsTests
             parser.ParseArguments<Options>(new[] { "-s", "My.sln", "-d", "-f", "json" }));
     }
 
+    [Theory]
+    [InlineData("-c")]
+    [InlineData("--crossSolution")]
+    public void Cross_solution_is_a_switch_that_does_not_swallow_the_option_that_follows_it(string name)
+    {
+        // The other side of the coin from the `-d` / `-o` toggles above. Those default to on and are scalars so
+        // they can be turned off, which costs them the bare form; this one defaults to off, so a plain bool is
+        // enough and it stays a real switch — it can sit anywhere on the command line.
+        var options = Parse("-s", "My.sln", name, "-f", "json");
+
+        Assert.True(options.CrossSolution);
+        Assert.Equal(OutputFormat.Json, options.Format);
+    }
+
     [Fact]
     public void Options_built_in_code_carry_the_same_defaults_as_the_command_line()
     {
@@ -125,6 +141,8 @@ public class OptionsTests
         Assert.Equal(fromCommandLine.Format, fromCode.Format);
         Assert.Equal(fromCommandLine.ReadDirectoryBuildProps, fromCode.ReadDirectoryBuildProps);
         Assert.Equal(fromCommandLine.ReportOverridenDirectoryBuildProps, fromCode.ReportOverridenDirectoryBuildProps);
+        Assert.Equal(fromCommandLine.CrossSolution, fromCode.CrossSolution);
+        Assert.False(fromCode.CrossSolution);
     }
 
     private static Options Parse(params string[] args)

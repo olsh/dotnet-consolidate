@@ -3,7 +3,8 @@ using System.Collections.Generic;
 namespace DotNet.Consolidate.Models
 {
     /// <summary>
-    /// Everything the output writers need to report on a single solution.
+    /// Everything the output writers need to report on one analysis — a single solution, or several analyzed
+    /// together with <c>-c</c>.
     /// </summary>
     /// <remarks>
     /// Deliberately independent of <see cref="SolutionInfo"/> and <see cref="Options"/>: the writers describe a
@@ -11,6 +12,9 @@ namespace DotNet.Consolidate.Models
     /// </remarks>
     public class SolutionAnalysisResult
     {
+        /// <summary>
+        /// One solution.
+        /// </summary>
         public SolutionAnalysisResult(
             string solutionFile,
             bool isParsedWithoutIssues,
@@ -18,8 +22,29 @@ namespace DotNet.Consolidate.Models
             IReadOnlyCollection<string> requestedPackageIds,
             IReadOnlyCollection<string> packageIdsNotFoundInSolution,
             IReadOnlyCollection<DirectoryBuildPropsOverride> directoryBuildPropsOverrides)
+            : this(
+                new[] { solutionFile },
+                isParsedWithoutIssues,
+                nonConsolidatedPackages,
+                requestedPackageIds,
+                packageIdsNotFoundInSolution,
+                directoryBuildPropsOverrides)
         {
-            SolutionFile = solutionFile;
+        }
+
+        /// <summary>
+        /// Several solutions analyzed as one set.
+        /// </summary>
+        public SolutionAnalysisResult(
+            IReadOnlyCollection<string> solutionFiles,
+            bool isParsedWithoutIssues,
+            IReadOnlyCollection<AnalysisResult> nonConsolidatedPackages,
+            IReadOnlyCollection<string> requestedPackageIds,
+            IReadOnlyCollection<string> packageIdsNotFoundInSolution,
+            IReadOnlyCollection<DirectoryBuildPropsOverride> directoryBuildPropsOverrides)
+        {
+            SolutionFiles = solutionFiles;
+            SolutionFile = string.Join(", ", solutionFiles);
             IsParsedWithoutIssues = isParsedWithoutIssues;
             NonConsolidatedPackages = nonConsolidatedPackages;
             RequestedPackageIds = requestedPackageIds;
@@ -27,6 +52,15 @@ namespace DotNet.Consolidate.Models
             DirectoryBuildPropsOverrides = directoryBuildPropsOverrides;
         }
 
+        /// <summary>
+        /// Gets the solutions this result covers, one entry per solution, so a consumer of the JSON report can
+        /// tell them apart.
+        /// </summary>
+        public IReadOnlyCollection<string> SolutionFiles { get; }
+
+        /// <summary>
+        /// Gets the solutions as one label to name them by, which is what the text report prints.
+        /// </summary>
         public string SolutionFile { get; }
 
         /// <summary>
