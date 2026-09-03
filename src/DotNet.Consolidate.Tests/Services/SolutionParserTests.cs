@@ -197,6 +197,37 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Equal("Newtonsoft.Json", package.Id);
         }
 
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_given_by_a_relative_path_still_inherits_DirectoryBuildProps_packages(
+            string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            // Directory.Build.props directories are always absolute, while project directories follow the
+            // solution path as given, so matching them used to find nothing at all for a relative solution.
+            var relativeSolutionPath = Path.GetRelativePath(
+                Directory.GetCurrentDirectory(),
+                TestSolutionFileName(solutionFileName));
+            Assert.False(Path.IsPathRooted(relativeSolutionPath));
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(new[] { relativeSolutionPath })
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            var projectB = solution.ProjectInfos.FirstOrDefault(p => p.ProjectName.Equals("ProjectB"));
+            Assert.NotNull(projectB);
+            Assert.Equal(
+                2,
+                projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Contains(projectB.Packages, p => p.Id == "Serilog");
+        }
+
         private static string TestSolutionFileName(string solutionFileName) =>
             Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
