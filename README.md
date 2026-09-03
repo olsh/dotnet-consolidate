@@ -75,7 +75,24 @@ Serilog
 ProjectB - 4.0.0 overrides 3.0.1 from C:\src\MySolution\Directory.Build.props
 ```
 
-The overlap is reported even when the two versions match, since the copy in the project file silently stops following the props file the next time it is bumped. It is informational — an override never changes the exit code — and it is on by default; turn it off with `-o false` (or `--reportOverridenDirectoryBuildProps false`), and note that `-d false` switches it off along with everything else about `Directory.Build.props`. Only a re-declared `Include` is detected; `<PackageReference Update="..." />` is not read by the tool at all.
+The overlap is reported even when the two versions match, since the copy in the project file silently stops following the props file the next time it is bumped. It is informational — an override never changes the exit code — and it is on by default; turn it off with `-o false` (or `--reportOverridenDirectoryBuildProps false`), and note that `-d false` switches it off along with everything else about `Directory.Build.props`.
+
+Both ways of overriding are recognised. Re-declaring the package with `Include` is the one shown above; the idiomatic way is `Update`, which changes the version of the item the props file already added instead of adding a second one that NuGet would flag as NU1504:
+
+```xml
+<!-- Directory.Build.props -->
+<PackageReference Include="Serilog" Version="3.0.1" />
+```
+```xml
+<!-- ProjectB.csproj -->
+<PackageReference Update="Serilog" Version="4.0.0" />
+```
+
+ProjectB restores Serilog 4.0.0, and that is the version it is checked against. It is listed **once**, at 4.0.0 — where a re-declared `Include` leaves the project holding two references and listed twice.
+
+`<PackageReference Remove="Serilog" />` is honoured as well: the project stops counting as a reference of the package altogether. A removal is not an override and is not reported by `-o`; it simply disappears from the report.
+
+Both only act on packages the project inherits, so `-d false` leaves them with nothing to change. Within a project file, MSBuild order applies — an `Update` or a `Remove` affects the `PackageReference` items declared above it and no others.
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
@@ -146,11 +163,11 @@ Property values are supplied with `--property`, and they take precedence over an
 
 `dotnet consolidate -s YourSolution.sln --property NuGetBuild=true Configuration=Release`
 
-`$(...)` references in `Include` and `Version` are expanded too, so `Version="$(SerilogVersion)"` is compared as the version it resolves to. When a property can't be resolved, the literal text is kept.
+`$(...)` references in `Include` and `Version` are expanded too, so `Version="$(SerilogVersion)"` is compared as the version it resolves to. When a property can't be resolved, the literal text is kept — except on an `Update`, which is dropped instead, leaving the inherited version standing. Overwriting a real version with the text `$(SerilogVersion)` would invent a discrepancy, and a property declared in the `Directory.Build.props` is unresolvable in the project file, which is parsed separately.
 
 A project that multi-targets is evaluated once per entry in `<TargetFrameworks>` and the results are combined, so references guarded by `'$(TargetFramework)' == '...'` still take part in the check.
 
-The tool implements the commonly used part of the condition language — `==`, `!=`, numeric comparisons, `And`, `Or`, `!`, parentheses, `Exists()` and `HasTrailingSlash()`. Anything beyond that, such as a property function like `$([MSBuild]::VersionGreaterThan(...))`, can't be evaluated; the tool says so and **keeps** the package references that condition guards, rather than dropping them. `Import` directives are not followed, so properties defined in an imported file are unknown (and therefore empty).
+The tool implements the commonly used part of the condition language — `==`, `!=`, numeric comparisons, `And`, `Or`, `!`, parentheses, `Exists()` and `HasTrailingSlash()`. Anything beyond that, such as a property function like `$([MSBuild]::VersionGreaterThan(...))`, can't be evaluated; the tool says so and **keeps** the package references that condition guards, rather than dropping them. A `Remove` behind such a condition is discarded for the same reason — nothing may drop a package because a project file wasn't understood — and an `Update` behind one is applied without displacing the inherited version, so both are reported. `Import` directives are not followed, so properties defined in an imported file are unknown (and therefore empty).
 
 ## Examples
 

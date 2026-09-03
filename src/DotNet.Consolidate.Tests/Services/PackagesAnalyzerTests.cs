@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 using DotNet.Consolidate.Models;
 using DotNet.Consolidate.Services;
@@ -207,6 +208,173 @@ public class PackagesAnalyzerTests
                 new Options { ExcludedPackageIds = new List<string> { "serilog" } }));
     }
 
+    [Fact]
+    public void An_update_replaces_the_inherited_version()
+    {
+        var project = CreateInheritingProject(update: new PackageVersionUpdate("Serilog", new Version("4.0.0"), true));
+
+        var package = Assert.Single(PackagesAnalyzer.GetEffectivePackages(project));
+
+        // Once, at the updated version — an Update modifies the inherited item instead of adding a second one.
+        Assert.Equal("Serilog", package.Id);
+        Assert.Equal("4.0.0", package.Version.OriginalValue);
+    }
+
+    [Fact]
+    public void An_update_that_matches_nothing_adds_nothing()
+    {
+        var project = CreateInheritingProject(update: new PackageVersionUpdate("Moq", new Version("4.18.1"), true));
+
+        var package = Assert.Single(PackagesAnalyzer.GetEffectivePackages(project));
+
+        Assert.Equal("Serilog", package.Id);
+        Assert.Equal("3.0.1", package.Version.OriginalValue);
+    }
+
+    [Fact]
+    public void An_update_that_is_not_certain_to_apply_keeps_the_inherited_version_beside_it()
+    {
+        var project = CreateInheritingProject(
+            update: new PackageVersionUpdate("Serilog", new Version("4.0.0"), false));
+
+        var versions = PackagesAnalyzer.GetEffectivePackages(project)
+            .Select(p => p.Version.OriginalValue);
+
+        Assert.Equal(new[] { "3.0.1", "4.0.0" }, versions);
+    }
+
+    [Fact]
+    public void An_update_only_reaches_the_inherited_packages()
+    {
+        // The project's own references were already resolved in document order by the evaluator. Applying an
+        // update to them again here would change an include that sits below the update naming it.
+        var project = new ProjectInfo(
+            "ProjectB",
+            "ProjectB",
+            new List<NuGetPackageInfo>
+            {
+                new NuGetPackageInfo("Serilog", new Version("1.0.0"), NuGetPackageReferenceType.Direct)
+            },
+            new[] { new PackageVersionUpdate("Serilog", new Version("4.0.0"), true) },
+            new List<string>());
+
+        var package = Assert.Single(PackagesAnalyzer.GetEffectivePackages(project));
+        Assert.Equal("1.0.0", package.Version.OriginalValue);
+    }
+
+    [Fact]
+    public void A_removal_drops_the_inherited_package()
+    {
+        var project = CreateInheritingProject(removedPackageId: "serilog");
+
+        Assert.Empty(PackagesAnalyzer.GetEffectivePackages(project));
+    }
+
+    [Fact]
+    public void A_removal_wins_over_an_update_of_the_same_package()
+    {
+        var project = CreateInheritingProject(
+            update: new PackageVersionUpdate("Serilog", new Version("4.0.0"), true),
+            removedPackageId: "Serilog");
+
+        Assert.Empty(PackagesAnalyzer.GetEffectivePackages(project));
+    }
+
+    [Fact]
+    public void An_updated_package_is_consolidated_against_the_version_it_was_updated_to()
+    {
+        // The defect behind the change: ProjectB restores 4.0.0, so it does not agree with ProjectA on 3.0.1.
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateInheritingProject("ProjectA"),
+            CreateInheritingProject("ProjectB", new PackageVersionUpdate("Serilog", new Version("4.0.0"), true))
+        };
+
+        var result = Assert.Single(PackagesAnalyzer.FindNonConsolidatedPackages(projectInfos, new Options()));
+
+        Assert.Equal("Serilog", result.NuGetPackageId);
+        Assert.Equal(
+            new[] { "ProjectA 3.0.1", "ProjectB 4.0.0" },
+            result.PackageVersions.Select(v => $"{v.ProjectName} {v.NuGetPackageVersion.OriginalValue}"));
+    }
+
+    [Fact]
+    public void A_package_every_project_removes_is_not_in_the_solution()
+    {
+        var projectInfos = new List<ProjectInfo> { CreateInheritingProject(removedPackageId: "Serilog") };
+
+        Assert.Equal(
+            new[] { "Serilog" },
+            PackagesAnalyzer.FindPackageIdsNotInSolution(projectInfos, new[] { "Serilog" }));
+    }
+
+    [Fact]
+    public void A_package_updated_by_the_project_file_is_an_override()
+    {
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateInheritingProject("ProjectB", new PackageVersionUpdate("Serilog", new Version("4.0.0"), true))
+        };
+
+        var propsOverride = Assert.Single(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(projectInfos, new Options()));
+
+        Assert.Equal("ProjectB", propsOverride.ProjectName);
+        Assert.Equal("Serilog", propsOverride.PackageId);
+        Assert.Equal("4.0.0", propsOverride.ProjectVersion.OriginalValue);
+        Assert.Equal("3.0.1", propsOverride.DirectoryBuildPropsVersion.OriginalValue);
+        Assert.Equal(PropsFile, propsOverride.DirectoryBuildPropsFile);
+    }
+
+    [Fact]
+    public void An_update_of_a_package_the_project_also_declares_is_reported_once()
+    {
+        // The evaluator has already applied the update to the declared reference, so both forms would print
+        // the very same line.
+        var project = CreateOverridingProject("Serilog", "4.0.0", "Serilog", "3.0.1");
+        var projectInfos = new List<ProjectInfo>
+        {
+            new ProjectInfo(
+                project.ProjectName,
+                project.ProjectDirectory,
+                project.Packages,
+                new[] { new PackageVersionUpdate("Serilog", new Version("4.0.0"), true) },
+                new List<string>())
+            {
+                DirectoryBuildPropsFile = PropsFile
+            }
+        };
+
+        Assert.Single(PackagesAnalyzer.FindDirectoryBuildPropsOverrides(projectInfos, new Options()));
+    }
+
+    [Fact]
+    public void A_removed_package_is_not_an_override()
+    {
+        var projectInfos = new List<ProjectInfo> { CreateInheritingProject(removedPackageId: "Serilog") };
+
+        Assert.Empty(PackagesAnalyzer.FindDirectoryBuildPropsOverrides(projectInfos, new Options()));
+    }
+
+    [Fact]
+    public void Update_overrides_are_filtered_by_the_same_package_id_options_as_the_consolidation_report()
+    {
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateInheritingProject("ProjectB", new PackageVersionUpdate("Serilog", new Version("4.0.0"), true))
+        };
+
+        Assert.Single(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { PackageIds = new List<string> { "serilog" } }));
+
+        Assert.Empty(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { ExcludedPackageIds = new List<string> { "serilog" } }));
+    }
+
     /// <summary>
     /// Two projects referencing <c>Serilog</c> at different versions, so it is not consolidated.
     /// </summary>
@@ -228,6 +396,29 @@ public class PackagesAnalyzerTests
             {
                 new NuGetPackageInfo(packageId, new Version(version), NuGetPackageReferenceType.Direct)
             });
+    }
+
+    /// <summary>
+    /// A project that declares nothing of its own and inherits <c>Serilog 3.0.1</c> from its props file,
+    /// optionally updating or removing it the way a <c>&lt;PackageReference Update="…" /&gt;</c> would.
+    /// </summary>
+    private static ProjectInfo CreateInheritingProject(
+        string projectName = "ProjectB",
+        PackageVersionUpdate update = null,
+        string removedPackageId = null)
+    {
+        return new ProjectInfo(
+            projectName,
+            projectName,
+            new List<NuGetPackageInfo>
+            {
+                new NuGetPackageInfo("Serilog", new Version("3.0.1"), NuGetPackageReferenceType.Inherited)
+            },
+            update == null ? new List<PackageVersionUpdate>() : new List<PackageVersionUpdate> { update },
+            removedPackageId == null ? new List<string>() : new List<string> { removedPackageId })
+        {
+            DirectoryBuildPropsFile = PropsFile
+        };
     }
 
     /// <summary>

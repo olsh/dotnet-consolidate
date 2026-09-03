@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <SerilogVersion>3.1.1</SerilogVersion>
+  </PropertyGroup>
+
+  <!--
+    Document order is the point of this file: MSBuild applies an Update or a Remove to the items declared
+    above it and to nothing else, so each pair below has to be read top to bottom.
+  -->
+  <ItemGroup>
+    <!-- Matches nothing in this file. Only an inherited package can be on the receiving end of it. -->
+    <PackageReference Update="Inherited.Only" Version="4.0.0" />
+
+    <!-- The update follows its include, so the declared version becomes 2.0.0. -->
+    <PackageReference Include="Updated.After" Version="1.0.0" />
+    <PackageReference Update="Updated.After" Version="2.0.0" />
+
+    <!-- The update comes first and the item does not exist yet, so the include below stands at 1.0.0. -->
+    <PackageReference Update="Updated.Before" Version="2.0.0" />
+    <PackageReference Include="Updated.Before" Version="1.0.0" />
+
+    <!-- Removed after being declared: nothing is left. -->
+    <PackageReference Include="Removed.After" Version="1.0.0" />
+    <PackageReference Remove="Removed.After" />
+
+    <!-- Removed before being declared: the include below survives, and the inherited copy does not. -->
+    <PackageReference Remove="Removed.Before" />
+    <PackageReference Include="Removed.Before" Version="1.0.0" />
+
+    <!-- The last update of a package wins. -->
+    <PackageReference Update="Updated.Twice" Version="2.0.0" />
+    <PackageReference Update="Updated.Twice" Version="3.0.0" />
+
+    <!-- Metadata only. Not a version change, and not a reference either. -->
+    <PackageReference Update="Metadata.Only" PrivateAssets="all" />
+
+    <!-- The version comes from a property this file declares. -->
+    <PackageReference Update="Updated.Expanded" Version="$(SerilogVersion)" />
+
+    <!--
+      The property is unknown here, as one declared in a Directory.Build.props would be. Keeping the literal
+      text would replace a real inherited version with "$(UnknownVersion)", so the update is dropped instead.
+    -->
+    <PackageReference Update="Updated.Unexpanded" Version="$(UnknownVersion)" />
+
+    <!-- A semicolon separated identity names two packages, exactly as it does for an Include. -->
+    <PackageReference Update="Updated.First;Updated.Second" Version="5.0.0" />
+    <PackageReference Remove="Removed.First;Removed.Second" />
+
+    <!-- Both are guarded by a condition that is false. -->
+    <PackageReference Update="Excluded.Update" Version="2.0.0" Condition="'$(NuGetBuild)' == 'true'" />
+    <PackageReference Remove="Excluded.Remove" Condition="'$(NuGetBuild)' == 'true'" />
+
+    <!--
+      A condition the tool cannot parse. The update is kept but is no longer certain to apply, while the
+      removal is discarded outright: nothing may drop a package because a project file wasn't understood.
+    -->
+    <PackageReference Update="Unevaluatable.Update" Version="2.0.0" Condition="$([MSBuild]::VersionGreaterThan('$(TargetFramework)', 'net6.0'))" />
+    <PackageReference Remove="Unevaluatable.Remove" Condition="$([MSBuild]::VersionGreaterThan('$(TargetFramework)', 'net6.0'))" />
+  </ItemGroup>
+
+  <!-- An item group whose condition is false hides everything in it, updates and removals included. -->
+  <ItemGroup Condition="'$(NuGetBuild)' == 'true'">
+    <PackageReference Update="Excluded.ByItemGroup" Version="2.0.0" />
+    <PackageReference Remove="Removed.ByItemGroup" />
+  </ItemGroup>
+
+</Project>

@@ -34,6 +34,8 @@
     <EmbeddedResource Include="TestData\NetCore.csproj" />
     <EmbeddedResource Include="TestData\Conditions.csproj" />
     <EmbeddedResource Include="TestData\MultiTargeting.csproj" />
+    <EmbeddedResource Include="TestData\PackageUpdates.csproj" />
+    <EmbeddedResource Include="TestData\MultiTargetingUpdates.csproj" />
     <EmbeddedResource Include="TestData\packages.config" />
   </ItemGroup>
 
@@ -45,6 +47,16 @@
 
   <ItemGroup>
     <None Include="TestData\TestSolution\src\ProjectB\ProjectB.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Override the inherited Serilog with an Update, and drop the inherited CommandLineParser entirely. -->
+    <None Include="TestData\TestSolution\src\ProjectC\ProjectC.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="TestData\TestSolution\src\ProjectD\ProjectD.csproj">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -16,9 +16,87 @@ namespace DotNet.Consolidate.Services
     public static class PackagesAnalyzer
     {
         // NuGet package IDs are case-insensitive, so `Serilog` and `serilog` are the same package — when
-        // grouping, when filtering with `-p`/`-e`, and when deciding a `-p` ID isn't in the solution. Every
-        // package ID comparison in the tool goes through this comparer so those three can't drift apart.
-        private static readonly StringComparer PackageIdComparer = StringComparer.OrdinalIgnoreCase;
+        // grouping, when filtering with `-p`/`-e`, when deciding a `-p` ID isn't in the solution, and when an
+        // `Update`/`Remove` decides which reference it names. Every package ID comparison in the tool goes
+        // through this one comparer so they can't drift apart; it lives on the model because `ProjectEvaluator`
+        // needs it too.
+        private static readonly StringComparer PackageIdComparer = NuGetPackageInfo.IdComparer;
+
+        /// <summary>
+        /// The package references a project really restores: the ones it declares, plus the ones it inherits
+        /// from a <c>Directory.Build.props</c> after its own <c>Update</c>s and <c>Remove</c>s have been applied
+        /// to them.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Only the <see cref="NuGetPackageReferenceType.Inherited"/> entries are touched. The project's own
+        /// references were already resolved against its <c>Update</c>s and <c>Remove</c>s by
+        /// <see cref="ProjectEvaluator"/>, in document order — applying them a second time here would change a
+        /// reference declared <i>below</i> the update that names it, which MSBuild does not do.
+        /// </para>
+        /// <para>
+        /// An update that matches no inherited package leaves no trace at all, which is the point: an
+        /// <c>Update</c> is not a reference and must not be counted as one.
+        /// </para>
+        /// </remarks>
+        public static List<NuGetPackageInfo> GetEffectivePackages(ProjectInfo projectInfo)
+        {
+            if (projectInfo.PackageUpdates.Count == 0 && projectInfo.RemovedPackageIds.Count == 0)
+            {
+                return projectInfo.Packages.ToList();
+            }
+
+            var removedPackageIds = new HashSet<string>(projectInfo.RemovedPackageIds, PackageIdComparer);
+
+            // A lookup, not a dictionary: a multi-targeting project can update the same ID to a different
+            // version per target framework, and both versions are restored.
+            var updates = projectInfo.PackageUpdates.ToLookup(u => u.Id, PackageIdComparer);
+
+            var packages = new List<NuGetPackageInfo>();
+            foreach (var package in projectInfo.Packages)
+            {
+                if (package.PackageReferenceType != NuGetPackageReferenceType.Inherited)
+                {
+                    packages.Add(package);
+
+                    continue;
+                }
+
+                if (removedPackageIds.Contains(package.Id))
+                {
+                    continue;
+                }
+
+                var applicableUpdates = updates[package.Id]
+                    .ToList();
+                if (applicableUpdates.Count == 0)
+                {
+                    packages.Add(package);
+
+                    continue;
+                }
+
+                var versions = new List<Version>();
+
+                // An update that isn't certain to apply — one target framework of several, or a condition that
+                // couldn't be evaluated — supersedes nothing, so the inherited version stands beside it.
+                if (applicableUpdates.Any(u => !u.ReplacesInheritedVersion))
+                {
+                    versions.Add(package.Version);
+                }
+
+                foreach (var update in applicableUpdates.Where(update => !versions.Contains(update.Version)))
+                {
+                    versions.Add(update.Version);
+                }
+
+                packages.AddRange(
+                    versions.Select(version =>
+                        new NuGetPackageInfo(package.Id, version, NuGetPackageReferenceType.Inherited)));
+            }
+
+            return packages;
+        }
 
         public static List<AnalysisResult> FindNonConsolidatedPackages(
             ICollection<ProjectInfo> projectInfos,
@@ -28,7 +106,7 @@ namespace DotNet.Consolidate.Services
             var analysisResults = new Dictionary<string, AnalysisResult>(PackageIdComparer);
             foreach (var projectInfo in projectInfos)
             {
-                foreach (var packageInfo in projectInfo.Packages)
+                foreach (var packageInfo in GetEffectivePackages(projectInfo))
                 {
                     if (!analysisResults.TryGetValue(packageInfo.Id, out var analysisResult))
                     {
@@ -57,19 +135,26 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <summary>
-        /// The packages a project declares itself while also inheriting them from a <c>Directory.Build.props</c>.
+        /// The packages a project pins itself while also inheriting them from a <c>Directory.Build.props</c>.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// The signal is already in the model: <see cref="SolutionInfoProvider"/> appends the props packages to
-        /// the project without de-duplicating against its own references, so an overriding project simply holds
-        /// both a <see cref="NuGetPackageReferenceType.Direct"/> and a
+        /// Two forms, and both are reported. The duplicate <c>Include</c> is already in the model:
+        /// <see cref="SolutionInfoProvider"/> appends the props packages to the project without
+        /// de-duplicating against its own references, so a project that re-declares one simply holds both a
+        /// <see cref="NuGetPackageReferenceType.Direct"/> and a
         /// <see cref="NuGetPackageReferenceType.Inherited"/> entry for the same ID.
         /// </para>
         /// <para>
-        /// Note that this only sees the duplicate <c>Include</c> form. A csproj that overrides with
-        /// <c>&lt;PackageReference Update="..." /&gt;</c> is invisible, because <see cref="ProjectEvaluator"/>
-        /// doesn't read <c>Update</c> at all.
+        /// The other form is <c>&lt;PackageReference Update="…" Version="…" /&gt;</c>, which is the idiomatic
+        /// one — a re-declared <c>Include</c> is a duplicate item that NuGet flags as NU1504. It leaves no
+        /// second entry to notice, so it is paired from <see cref="ProjectInfo.PackageUpdates"/> instead. A
+        /// project can hold both for one ID, in which case only the duplicate <c>Include</c> is reported: the
+        /// two would print the same line, since the update has already been applied to the direct entry.
+        /// </para>
+        /// <para>
+        /// A <c>Remove</c> is not an override and is not reported. The package stops being a reference of that
+        /// project altogether, which the consolidation report shows on its own.
         /// </para>
         /// </remarks>
         public static List<DirectoryBuildPropsOverride> FindDirectoryBuildPropsOverrides(
@@ -89,7 +174,8 @@ namespace DotNet.Consolidate.Services
                 }
 
                 var directPackages = projectInfo.Packages
-                    .Where(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct);
+                    .Where(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct)
+                    .ToList();
 
                 foreach (var directPackage in directPackages)
                 {
@@ -100,6 +186,28 @@ namespace DotNet.Consolidate.Services
                                 projectInfo.ProjectName,
                                 directPackage.Id,
                                 directPackage.Version,
+                                inheritedPackage.Version,
+                                projectInfo.DirectoryBuildPropsFile ?? string.Empty));
+                    }
+                }
+
+                var declaredPackageIds = new HashSet<string>(directPackages.Select(p => p.Id), PackageIdComparer);
+                var removedPackageIds = new HashSet<string>(projectInfo.RemovedPackageIds, PackageIdComparer);
+
+                foreach (var update in projectInfo.PackageUpdates)
+                {
+                    if (declaredPackageIds.Contains(update.Id) || removedPackageIds.Contains(update.Id))
+                    {
+                        continue;
+                    }
+
+                    foreach (var inheritedPackage in inheritedPackages[update.Id])
+                    {
+                        overrides.Add(
+                            new DirectoryBuildPropsOverride(
+                                projectInfo.ProjectName,
+                                update.Id,
+                                update.Version,
                                 inheritedPackage.Version,
                                 projectInfo.DirectoryBuildPropsFile ?? string.Empty));
                     }
@@ -124,7 +232,8 @@ namespace DotNet.Consolidate.Services
         /// </summary>
         /// <remarks>
         /// Lives next to the filters above so it uses the same <see cref="PackageIdComparer"/>: an ID the
-        /// filters accept must never be reported as missing, and the other way round.
+        /// filters accept must never be reported as missing, and the other way round. It reads the effective
+        /// packages for the same reason — a package every project removes really is not in the solution.
         /// </remarks>
         /// <returns>The requested IDs as the user typed them, so the report echoes back their casing.</returns>
         public static List<string> FindPackageIdsNotInSolution(
@@ -132,7 +241,8 @@ namespace DotNet.Consolidate.Services
             IReadOnlyCollection<string> requestedPackageIds)
         {
             var solutionPackageIds = new HashSet<string>(
-                projectInfos.SelectMany(projectInfo => projectInfo.Packages.Select(package => package.Id)),
+                projectInfos.SelectMany(projectInfo => GetEffectivePackages(projectInfo)
+                    .Select(package => package.Id)),
                 PackageIdComparer);
 
             return requestedPackageIds.Where(id => !solutionPackageIds.Contains(id))

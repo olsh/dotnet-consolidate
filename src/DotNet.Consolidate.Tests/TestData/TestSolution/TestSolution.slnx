@@ -5,6 +5,8 @@
   <Folder Name="/src/">
     <Project Path="src/ProjectA/ProjectA.csproj" />
     <Project Path="src/ProjectB/ProjectB.csproj" />
+    <Project Path="src/ProjectC/ProjectC.csproj" />
+    <Project Path="src/ProjectD/ProjectD.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <File Path="tests/Directory.build.props" />

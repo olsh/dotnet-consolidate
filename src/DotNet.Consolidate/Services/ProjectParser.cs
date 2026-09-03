@@ -64,7 +64,7 @@ namespace DotNet.Consolidate.Services
             return packageInfos;
         }
 
-        public List<NuGetPackageInfo> ParseProjectFile(string path)
+        public ProjectEvaluationResult ParseProjectFile(string path)
         {
             try
             {
@@ -80,7 +80,7 @@ namespace DotNet.Consolidate.Services
             }
         }
 
-        public List<NuGetPackageInfo> ParseProjectContent(string content, string? projectFilePath = null)
+        public ProjectEvaluationResult ParseProjectContent(string content, string? projectFilePath = null)
         {
             return _projectEvaluator.ParsePackageReferences(XDocument.Parse(content), projectFilePath);
         }

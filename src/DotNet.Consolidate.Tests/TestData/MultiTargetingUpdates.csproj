@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net472;net8.0</TargetFrameworks>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <!-- Only one of the two frameworks updates this, so the inherited version is still restored by the other. -->
+    <PackageReference Update="Partially.Updated" Version="2.0.0" />
+
+    <!-- Likewise for the removal, which is why removals are intersected rather than unioned. -->
+    <PackageReference Remove="Partially.Removed" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Made by every pass, so it supersedes the inherited version outright. -->
+    <PackageReference Update="Fully.Updated" Version="2.0.0" />
+    <PackageReference Remove="Fully.Removed" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- Opts out of the CommandLineParser reference the solution's Directory.build.props hands out. -->
+    <PackageReference Remove="CommandLineParser" />
+  </ItemGroup>
+
+</Project>

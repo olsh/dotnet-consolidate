@@ -315,6 +315,115 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.All(solution.ProjectInfos, p => Assert.Null(p.DirectoryBuildPropsFile));
         }
 
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void A_project_that_updates_an_inherited_package_is_analyzed_at_the_updated_version(
+            string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            // The props file and the csproj are parsed separately, so this is the end-to-end proof that the
+            // update finds the inherited item after the two have been brought together.
+            var projectC = solution.ProjectInfos.First(p => p.ProjectName.Equals("ProjectC"));
+            var packages = PackagesAnalyzer.GetEffectivePackages(projectC)
+                .Select(p => $"{p.Id} {p.Version.OriginalValue}")
+                .OrderBy(p => p)
+                .ToList();
+
+            // Serilog once, at the version the csproj set — not twice, and not at the props file's 3.0.1.
+            Assert.Equal(new[] { "CommandLineParser 2.7.82", "Serilog 4.0.0" }, packages);
+        }
+
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void A_project_that_removes_an_inherited_package_no_longer_references_it(string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            var projectD = solution.ProjectInfos.First(p => p.ProjectName.Equals("ProjectD"));
+            var packages = PackagesAnalyzer.GetEffectivePackages(projectD)
+                .Select(p => $"{p.Id} {p.Version.OriginalValue}")
+                .ToList();
+
+            Assert.Equal(new[] { "Serilog 3.0.1" }, packages);
+        }
+
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void An_update_contributes_nothing_when_DirectoryBuildProps_are_not_read(string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            // With nothing inherited there is no item for the update to name, and an update is not a
+            // reference in its own right.
+            var projectC = solution.ProjectInfos.First(p => p.ProjectName.Equals("ProjectC"));
+            Assert.Empty(PackagesAnalyzer.GetEffectivePackages(projectC));
+        }
+
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void A_project_that_updates_an_inherited_package_is_reported_as_an_override(string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            Assert.NotNull(solution);
+
+            var overrides = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+                solution.ProjectInfos,
+                new Options());
+
+            var propsOverride = Assert.Single(overrides);
+            Assert.Equal("ProjectC", propsOverride.ProjectName);
+            Assert.Equal("Serilog", propsOverride.PackageId);
+            Assert.Equal("4.0.0", propsOverride.ProjectVersion.OriginalValue);
+            Assert.Equal("3.0.1", propsOverride.DirectoryBuildPropsVersion.OriginalValue);
+            Assert.Equal(
+                Path.Join(TestSolutionDirectoryName, "Directory.build.props"),
+                propsOverride.DirectoryBuildPropsFile);
+        }
+
         private static string TestSolutionFileName(string solutionFileName) =>
             Path.Join(TestSolutionDirectoryName, solutionFileName);
     }

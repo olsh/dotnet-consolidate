@@ -56,7 +56,14 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <remarks>
+        /// <para>
         /// NOTE: This does not support chained Directory.Build.props (Import directive).
+        /// </para>
+        /// <para>
+        /// The props versions are appended as they were declared. A project's own <c>Update</c>/<c>Remove</c>
+        /// is applied later, by <see cref="PackagesAnalyzer.GetEffectivePackages"/>, so that the version this
+        /// file put there is still available to the <c>-o</c> report.
+        /// </para>
         /// </remarks>
         private static void ApplyInheritedPackages(
             ICollection<ProjectInfo> projectsInfo,
@@ -193,8 +200,14 @@ namespace DotNet.Consolidate.Services
                     }
                     else if (File.Exists(projectFilePath))
                     {
-                        var packages = _projectParser.ParseProjectFile(projectFilePath);
-                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, packages));
+                        var evaluation = _projectParser.ParseProjectFile(projectFilePath);
+                        projectInfos.Add(
+                            new ProjectInfo(
+                                project.ActualDisplayName,
+                                projectDirectory,
+                                evaluation.Packages,
+                                evaluation.PackageUpdates,
+                                evaluation.RemovedPackageIds));
                     }
                     else
                     {
@@ -232,7 +245,12 @@ namespace DotNet.Consolidate.Services
             {
                 try
                 {
-                    var packages = _projectParser.ParseProjectFile(fileInfo.FullName);
+                    // Only the packages: an `Update` or a `Remove` left over by the props file itself is
+                    // dropped on purpose. It would have had to match an item declared before it, and a props
+                    // file is imported ahead of everything — including the project files that inherit from it,
+                    // which it therefore cannot reach.
+                    var packages = _projectParser.ParseProjectFile(fileInfo.FullName)
+                        .Packages;
 
                     directoryBuildPropsInfo.Add(
                         new DirectoryBuildPropsInfo(
