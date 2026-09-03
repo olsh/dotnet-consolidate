@@ -54,7 +54,9 @@ namespace DotNet.Consolidate.Models
             "reportOverridenDirectoryBuildProps",
             Required = false,
             Default = true,
-            HelpText = "Report when csproj overrides a Directory.Build.props, e.g. -o false to skip the report")]
+            // No `-o false` example here, unlike -d: the option has no effect at all yet (#83), so an example
+            // would have `--help` advertise a behaviour the tool doesn't have. Same reason it isn't in the README.
+            HelpText = "Report when csproj overrides a Directory.Build.props")]
         public bool? ReportOverridenDirectoryBuildProps { get; init; } = true;
 
         [Option(
