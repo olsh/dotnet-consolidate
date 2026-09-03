@@ -123,7 +123,8 @@ namespace DotNet.Consolidate
 
                 var nonConsolidatedPackages =
                     packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                var analysisResult = CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options);
+                var analysisResult =
+                    CreateAnalysisResult(packagesAnalyzer, solutionInfo, nonConsolidatedPackages, options);
                 outputWriter.WriteAnalysisResults(analysisResult);
 
                 // A `-p` package that no project references is a failure too: it's usually a typo, and exiting 0
@@ -138,15 +139,17 @@ namespace DotNet.Consolidate
         }
 
         private static SolutionAnalysisResult CreateAnalysisResult(
+            PackagesAnalyzer packagesAnalyzer,
             SolutionInfo solutionInfo,
             List<AnalysisResult> nonConsolidatedPackages,
             Options options)
         {
             var requestedPackageIds = options.PackageIds?.ToList() ?? new List<string>();
-            var solutionPackageIds = solutionInfo.ProjectInfos.SelectMany(x => x.Packages.Select(p => p.Id))
-                .ToList();
-            var packageIdsNotFoundInSolution = requestedPackageIds.Where(a => !solutionPackageIds.Contains(a))
-                .ToList();
+
+            // The analyzer owns this so it compares IDs exactly the way its `-p`/`-e` filters do — otherwise
+            // a package the filter matched could still be reported as missing from the solution.
+            var packageIdsNotFoundInSolution =
+                packagesAnalyzer.FindPackageIdsNotInSolution(solutionInfo.ProjectInfos, requestedPackageIds);
 
             return new SolutionAnalysisResult(
                 solutionInfo.SolutionFile,
