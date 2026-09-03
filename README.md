@@ -58,6 +58,27 @@ With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, a
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
+## MSBuild conditions
+
+`Condition` attributes on `PropertyGroup`, `ItemGroup` and `PackageReference` are evaluated, so a package reference that isn't actually active is left out of the check:
+
+```xml
+<ItemGroup Condition="'$(NuGetBuild)' == 'true'">
+  <!-- Not checked for consolidation unless NuGetBuild is passed in. -->
+  <PackageReference Include="MyPackage" Version="1.0.0" />
+</ItemGroup>
+```
+
+Property values are supplied with `--property`, and they take precedence over anything the project file sets:
+
+`dotnet consolidate -s YourSolution.sln --property NuGetBuild=true Configuration=Release`
+
+`$(...)` references in `Include` and `Version` are expanded too, so `Version="$(SerilogVersion)"` is compared as the version it resolves to. When a property can't be resolved, the literal text is kept.
+
+A project that multi-targets is evaluated once per entry in `<TargetFrameworks>` and the results are combined, so references guarded by `'$(TargetFramework)' == '...'` still take part in the check.
+
+The tool implements the commonly used part of the condition language — `==`, `!=`, numeric comparisons, `And`, `Or`, `!`, parentheses, `Exists()` and `HasTrailingSlash()`. Anything beyond that, such as a property function like `$([MSBuild]::VersionGreaterThan(...))`, can't be evaluated; the tool says so and **keeps** the package references that condition guards, rather than dropping them. `Import` directives are not followed, so properties defined in an imported file are unknown (and therefore empty).
+
 ## Examples
 
 `dotnet consolidate -s umbraco.sln`

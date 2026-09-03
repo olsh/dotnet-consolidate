@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <SerilogVersion>3.1.1</SerilogVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DebugOnly>true</DebugOnly>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(NuGetBuild)' == 'true'">
+    <PackageReference Include="Excluded.ByItemGroup" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Excluded.ByReference" Version="1.0.0" Condition="'$(NuGetBuild)' == 'true'" />
+    <PackageReference Include="Included.Always" Version="1.0.0" />
+    <PackageReference Include="Included.WhenDebug" Version="1.0.0" Condition="'$(DebugOnly)' == 'true'" />
+    <PackageReference Include="Included.NotEqual" Version="1.0.0" Condition="'$(NuGetBuild)' != 'true'" />
+    <PackageReference Include="Included.Expanded" Version="$(SerilogVersion)" />
+    <PackageReference Include="Included.Unexpanded" Version="$(UnknownVersion)" />
+    <PackageReference Include="Included.Grouping" Version="1.0.0" Condition="('$(TargetFramework)' == 'net8.0' And '$(NuGetBuild)' != 'true') Or '$(Never)' == 'yes'" />
+    <PackageReference Include="Included.Unevaluatable" Version="1.0.0" Condition="$([MSBuild]::VersionGreaterThan('$(TargetFramework)', 'net6.0'))" />
+  </ItemGroup>
+
+</Project>
