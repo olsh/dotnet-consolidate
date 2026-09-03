@@ -1,7 +1,7 @@
 # dotnet consolidate
 
 [![Build](https://github.com/olsh/dotnet-consolidate/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/olsh/dotnet-consolidate/actions/workflows/build.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dotnet-consolidate&metric=alert_status)](https://sonarcloud.io/dashboard?id=dotnet-consolidate)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=olsh_dotnet-consolidate&metric=alert_status)](https://sonarcloud.io/dashboard?id=olsh_dotnet-consolidate)
 [![NuGet](https://img.shields.io/nuget/v/dotnet-consolidate.svg)](https://www.nuget.org/packages/dotnet-consolidate/)
 
 .NET core tool that verifies that all NuGet packages in a solution are consolidated.
