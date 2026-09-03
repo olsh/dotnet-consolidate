@@ -1,4 +1,4 @@
 {
   "$schema": "./build.schema.json",
-  "Solution": "src/DotNet.Consolidate.sln"
+  "Solution": "DotNet.Consolidate.slnx"
 }

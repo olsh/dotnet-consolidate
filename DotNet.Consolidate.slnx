@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="appveyor.yml" />
+    <File Path="build.cmd" />
+    <File Path="build.ps1" />
+    <File Path="build.sh" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="build/_build.csproj">
+    <Build Project="false" />
+  </Project>
+  <Project Path="src/DotNet.Consolidate/DotNet.Consolidate.csproj" />
+  <Project Path="src/DotNet.Consolidate.Tests/DotNet.Consolidate.Tests.csproj" />
+</Solution>

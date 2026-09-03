@@ -70,7 +70,6 @@ class Build : NukeBuild
             {
                 s = s
                     .SetServer("https://sonarcloud.io")
-                    .SetFramework("net5.0")
                     .SetLogin(SonarQubeApiKey)
                     .SetProjectKey("dotnet-consolidate")
                     .SetName("dotnet consolidate")
@@ -102,7 +101,6 @@ class Build : NukeBuild
         .Executes(() =>
         {
             SonarScannerEnd(s => s
-                .SetLogin(SonarQubeApiKey)
-                .SetFramework("net5.0"));
+                .SetLogin(SonarQubeApiKey));
         });
 }
