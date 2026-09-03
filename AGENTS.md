@@ -31,7 +31,7 @@ dotnet test src/DotNet.Consolidate.Tests/DotNet.Consolidate.Tests.csproj --filte
 
 CI is GitHub Actions (`.github/workflows/build.yml`), on `ubuntu-latest` for pushes and pull requests to `master`: `./build.sh test --configuration Release` then `./build.sh nuget-pack --configuration Release`, uploading `artifacts/*.nupkg`. The job installs both the .NET 8 (tests are `net8.0`) and .NET 10 (NUKE and `.slnx`) SDKs.
 
-SonarCloud runs as server-side Automatic Analysis via the GitHub app — there is no scanner, token, or Java in the build. Publishing to NuGet.org is manual.
+SonarCloud runs as server-side Automatic Analysis via the GitHub app — there is no scanner, token, or Java in the build. Analysis scope lives in `.sonarcloud.properties` at the repo root (`sonar.exclusions` currently drops the generated `build.ps1` / `build.sh`). That is the Automatic Analysis file specifically — `sonar-project.properties` is for the CI-based scanner and would be ignored — and it is **only read from the default branch**, so an exclusion added on a branch does nothing until it is merged. Publishing to NuGet.org is manual.
 
 `.github/workflows/dependabot-auto-merge.yml` approves and squash-auto-merges patch and minor Dependabot PRs.
 
