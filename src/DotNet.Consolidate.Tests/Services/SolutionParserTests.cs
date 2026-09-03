@@ -228,6 +228,43 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Contains(projectB.Packages, p => p.Id == "Serilog");
         }
 
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_project_does_not_inherit_from_a_sibling_directory_sharing_a_name_prefix(
+            string solutionFileName)
+        {
+            var projectParser = new ProjectParser(new Logger());
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            // Assert
+            // tests-integration\ is a sibling of tests\, not a child of it, so IntegrationTests inherits from
+            // the solution root. A bare string prefix match claimed it for tests\Directory.build.props, which
+            // also wins the longest-first ordering, and the project silently got the wrong versions.
+            var integrationTests = solution.ProjectInfos
+                .FirstOrDefault(p => p.ProjectName.Equals("IntegrationTests"));
+
+            Assert.NotNull(integrationTests);
+
+            // Pinned as an exact id-and-version set rather than a count and a couple of ids: the versions
+            // are what the defect got wrong, and a project handed the wrong props file still ends up with a
+            // plausible-looking package list. Counting ids only holds while the two props files declare
+            // disjoint packages, which is not something this test should depend on.
+            var inheritedPackages = integrationTests.Packages
+                .Where(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited)
+                .Select(p => $"{p.Id} {p.Version.OriginalValue}")
+                .OrderBy(p => p)
+                .ToList();
+
+            Assert.Equal(new[] { "CommandLineParser 2.7.82", "Serilog 3.0.1" }, inheritedPackages);
+        }
+
         private static string TestSolutionFileName(string solutionFileName) =>
             Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
