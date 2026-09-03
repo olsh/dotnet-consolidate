@@ -41,14 +41,16 @@ namespace DotNet.Consolidate.Services
                 _output.WriteLine();
             }
 
-            if (result.RequestedPackageIds.Any())
+            if (result.PackageIdsNotFoundInSolution.Any())
             {
                 _output.WriteLine(
                     "The following package IDs given for consolidation check were not found in the solution projects:");
                 _output.WriteLine(string.Join(Environment.NewLine, result.PackageIdsNotFoundInSolution));
             }
 
-            if (!result.NonConsolidatedPackages.Any())
+            // A package that isn't referenced anywhere isn't consolidated, so saying so would contradict the
+            // report just written above.
+            if (!result.NonConsolidatedPackages.Any() && !result.PackageIdsNotFoundInSolution.Any())
             {
                 var packageList = result.RequestedPackageIds.Any()
                     ? $"from the list {string.Join(Environment.NewLine, result.RequestedPackageIds)} "

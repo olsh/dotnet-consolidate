@@ -34,7 +34,12 @@ namespace DotNet.Consolidate.Services
                 var (isSuccessParsing, solutionInfo) = TryGetSolutionInfo(solutionFile);
                 if (!isSuccessParsing || solutionInfo == null)
                 {
-                    solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo, new List<ProjectInfo>(), new List<DirectoryBuildPropsInfo>()));
+                    solutionInfos.Add(
+                        new SolutionInfo(
+                            solutionFile,
+                            solutionInfo,
+                            new List<ProjectInfo>(),
+                            new List<DirectoryBuildPropsInfo>()));
 
                     continue;
                 }
@@ -44,7 +49,7 @@ namespace DotNet.Consolidate.Services
                     ? TryGetDirectoryBuildPropsInfo(new FileInfo(solutionFile).Directory)
                     : new List<DirectoryBuildPropsInfo>();
                 ApplyInheritedPackages(projectsInfo, directoryBuildPropsInfos);
-                solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo,  projectsInfo, directoryBuildPropsInfos));
+                solutionInfos.Add(new SolutionInfo(solutionFile, solutionInfo, projectsInfo, directoryBuildPropsInfos));
             }
 
             return solutionInfos;
@@ -53,7 +58,9 @@ namespace DotNet.Consolidate.Services
         /// <remarks>
         /// NOTE: This does not support chained Directory.Build.props (Import directive).
         /// </remarks>
-        private static void ApplyInheritedPackages(ICollection<ProjectInfo> projectsInfo, ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
+        private static void ApplyInheritedPackages(
+            ICollection<ProjectInfo> projectsInfo,
+            ICollection<DirectoryBuildPropsInfo> directoryBuildPropsInfos)
         {
             if (!projectsInfo.Any())
             {
@@ -65,21 +72,41 @@ namespace DotNet.Consolidate.Services
                 return;
             }
 
+            // Props directories come from a directory walk and are always absolute, while project directories
+            // follow the solution path given on the command line. Both sides are resolved before matching, so
+            // that a relative `-s` doesn't silently leave every project inheriting nothing.
+            var candidates = directoryBuildPropsInfos
+                .Where(dbp => !string.IsNullOrEmpty(dbp.DirectoryName))
+                .Select(dbp => new { Props = dbp, Directory = ResolveDirectory(dbp.DirectoryName) })
+                .OrderByDescending(dbp => dbp.Directory.Length)
+                .ToList();
+
             foreach (var projectInfo in projectsInfo)
             {
-                var directoryBuildProps = directoryBuildPropsInfos
-                    .Where(dbp => !string.IsNullOrEmpty(dbp.DirectoryName))
-                    .OrderByDescending(dbp => dbp.DirectoryName.Length)
-                    .FirstOrDefault(dbp => projectInfo.ProjectDirectory.StartsWith(dbp.DirectoryName));
+                var projectDirectory = ResolveDirectory(projectInfo.ProjectDirectory);
+                var directoryBuildProps = candidates
+                    .FirstOrDefault(dbp => projectDirectory.StartsWith(dbp.Directory))
+                    ?.Props;
 
                 if (directoryBuildProps != null)
                 {
                     foreach (var packageReference in directoryBuildProps.Packages)
                     {
-                        projectInfo.Packages.Add(new NuGetPackageInfo(packageReference.Id, packageReference.Version, NuGetPackageReferenceType.Inherited));
+                        projectInfo.Packages.Add(
+                            new NuGetPackageInfo(
+                                packageReference.Id,
+                                packageReference.Version,
+                                NuGetPackageReferenceType.Inherited));
                     }
                 }
             }
+        }
+
+        private static string ResolveDirectory(string directory)
+        {
+            // A project sitting next to a solution passed as a bare file name has no directory part at all,
+            // and Path.GetFullPath rejects an empty string.
+            return Path.GetFullPath(string.IsNullOrEmpty(directory) ? "." : directory);
         }
 
         private (bool isSuccessParsing, SolutionModel? solution) TryGetSolutionInfo(string filePath)
@@ -111,7 +138,9 @@ namespace DotNet.Consolidate.Services
                     return (false, null);
                 }
 
-                solution = serializer.OpenAsync(filePath, CancellationToken.None).GetAwaiter().GetResult();
+                solution = serializer.OpenAsync(filePath, CancellationToken.None)
+                    .GetAwaiter()
+                    .GetResult();
             }
             catch (Exception e)
             {
@@ -142,7 +171,8 @@ namespace DotNet.Consolidate.Services
                 {
                     // Solution files store project paths with '\' (.sln) or '/' (.slnx),
                     // so we must convert to system path separator to work on posix systems.
-                    var projectFilePath = PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.FilePath));
+                    var projectFilePath =
+                        PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.FilePath));
                     var projectDirectory = Path.GetDirectoryName(projectFilePath);
                     if (projectDirectory == null)
                     {
@@ -165,7 +195,8 @@ namespace DotNet.Consolidate.Services
                     }
                     else
                     {
-                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, new List<NuGetPackageInfo>()));
+                        projectInfos.Add(
+                            new ProjectInfo(project.ActualDisplayName, projectDirectory, new List<NuGetPackageInfo>()));
                         _logger.Message($"Unable to find package.config file for project {project.FilePath}");
                     }
                 }
@@ -200,7 +231,11 @@ namespace DotNet.Consolidate.Services
                 {
                     var packages = _projectParser.ParseProjectFile(fileInfo.FullName);
 
-                    directoryBuildPropsInfo.Add(new DirectoryBuildPropsInfo(fileInfo.Name,  fileInfo.Directory?.FullName ?? string.Empty, packages));
+                    directoryBuildPropsInfo.Add(
+                        new DirectoryBuildPropsInfo(
+                            fileInfo.Name,
+                            fileInfo.Directory?.FullName ?? string.Empty,
+                            packages));
                 }
                 catch (Exception e)
                 {
