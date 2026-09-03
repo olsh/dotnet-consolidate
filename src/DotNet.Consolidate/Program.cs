@@ -49,7 +49,9 @@ namespace DotNet.Consolidate
 
         private static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args)
+            using var parser = CommandLineParserFactory.Create();
+
+            parser.ParseArguments<Options>(args)
                 .WithParsed(Consolidate)
                 .WithNotParsed(HandleParseError);
         }
@@ -57,10 +59,17 @@ namespace DotNet.Consolidate
         // ReSharper disable once CognitiveComplexity
         private static void Consolidate(Options options)
         {
-            var logger = new Logger();
+            var collectingLogger = new CollectingLogger();
+
+            // In JSON mode the messages travel inside the document instead of being printed, so stdout stays a
+            // single parseable document and nothing is written to stderr.
+            ILogger logger = options.Format == OutputFormat.Json ? collectingLogger : new Logger();
+            var outputWriter = OutputWriterFactory.Create(options.Format, Console.Out, collectingLogger.Messages);
+
             if (options.ExcludedPackageIds?.Any() == true && options.PackageIds?.Any() == true)
             {
                 logger.Message("There is no sense to provide both `-p` and `-e` arguments at the same time.");
+                outputWriter.Flush();
                 Environment.ExitCode = 1;
 
                 return;
@@ -69,6 +78,7 @@ namespace DotNet.Consolidate
             var (isSuccess, globalProperties) = TryParseGlobalProperties(options.GlobalProperties, logger);
             if (!isSuccess)
             {
+                outputWriter.Flush();
                 Environment.ExitCode = 1;
 
                 return;
@@ -102,7 +112,7 @@ namespace DotNet.Consolidate
 
             foreach (var solutionInfo in solutionsInfo)
             {
-                logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
+                logger.Progress($"Analyzing packages in {solutionInfo.SolutionFile}");
                 if (!solutionInfo.IsParsedWithoutIssues)
                 {
                     logger.Message(
@@ -113,12 +123,33 @@ namespace DotNet.Consolidate
 
                 var nonConsolidatedPackages =
                     packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                logger.WriteAnalysisResults(nonConsolidatedPackages, solutionInfo, options);
+                outputWriter.WriteAnalysisResults(CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options));
                 if (nonConsolidatedPackages.Any())
                 {
                     Environment.ExitCode = 1;
                 }
             }
+
+            outputWriter.Flush();
+        }
+
+        private static SolutionAnalysisResult CreateAnalysisResult(
+            SolutionInfo solutionInfo,
+            List<AnalysisResult> nonConsolidatedPackages,
+            Options options)
+        {
+            var requestedPackageIds = options.PackageIds?.ToList() ?? new List<string>();
+            var solutionPackageIds = solutionInfo.ProjectInfos.SelectMany(x => x.Packages.Select(p => p.Id))
+                .ToList();
+            var packageIdsNotFoundInSolution = requestedPackageIds.Where(a => !solutionPackageIds.Contains(a))
+                .ToList();
+
+            return new SolutionAnalysisResult(
+                solutionInfo.SolutionFile,
+                solutionInfo.IsParsedWithoutIssues,
+                nonConsolidatedPackages,
+                requestedPackageIds,
+                packageIdsNotFoundInSolution);
         }
     }
 }

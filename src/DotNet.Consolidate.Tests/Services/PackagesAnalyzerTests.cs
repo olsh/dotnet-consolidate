@@ -23,14 +23,7 @@ public class PackagesAnalyzerTests
                 new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
             });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(
-            new List<string>(),
-            new List<string>(),
-            new List<string>(),
-            string.Empty,
-            true,
-            true,
-            new List<string>());
+        var options = new Options();
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
@@ -49,14 +42,7 @@ public class PackagesAnalyzerTests
                 new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
             });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(
-            new List<string>(),
-            new List<string>(),
-            new List<string>(),
-            string.Empty,
-            true,
-            true,
-            new List<string>());
+        var options = new Options();
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
@@ -78,14 +64,7 @@ public class PackagesAnalyzerTests
                 new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
             });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(
-            new List<string>(),
-            new List<string>(),
-            new List<string>(),
-            excludedPackageVersionsRegex,
-            true,
-            true,
-            new List<string>());
+        var options = new Options { ExcludedPackageVersionsRegex = excludedPackageVersionsRegex };
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(
