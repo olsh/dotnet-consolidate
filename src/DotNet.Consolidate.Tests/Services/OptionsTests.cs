@@ -61,6 +61,59 @@ public class OptionsTests
         Assert.IsType<NotParsed<Options>>(parser.ParseArguments<Options>(new[] { "-s", "My.sln", "-f", "xml" }));
     }
 
+    [Theory]
+    [InlineData("-d", "false", false)]
+    [InlineData("-d", "true", true)]
+    [InlineData("--directoryBuildProps", "false", false)]
+    [InlineData("--directoryBuildProps", "true", true)]
+    public void Directory_build_props_can_be_switched_off(string name, string value, bool expected)
+    {
+        Assert.Equal(
+            expected,
+            Parse("-s", "My.sln", name, value)
+                .ReadDirectoryBuildProps);
+    }
+
+    [Theory]
+    [InlineData("-o", "false", false)]
+    [InlineData("-o", "true", true)]
+    [InlineData("--reportOverridenDirectoryBuildProps", "false", false)]
+    [InlineData("--reportOverridenDirectoryBuildProps", "true", true)]
+    public void Reporting_overriden_directory_build_props_can_be_switched_off(string name, string value, bool expected)
+    {
+        Assert.Equal(
+            expected,
+            Parse("-s", "My.sln", name, value)
+                .ReportOverridenDirectoryBuildProps);
+    }
+
+    [Fact]
+    public void A_toggle_passed_without_a_value_still_switches_it_on()
+    {
+        // Making the toggles nullable doesn't take the bare `-d` / `-o` form away, so a command line written
+        // against the old switch behaviour keeps working.
+        Assert.Equal(
+            true,
+            Parse("-s", "My.sln", "-d")
+                .ReadDirectoryBuildProps);
+        Assert.Equal(
+            true,
+            Parse("-s", "My.sln", "-o")
+                .ReportOverridenDirectoryBuildProps);
+    }
+
+    [Fact]
+    public void A_toggle_passed_without_a_value_swallows_the_option_that_follows_it()
+    {
+        // The other side of being a scalar rather than a switch: with no value of its own, `-d` takes the next
+        // token as one, and `-f` is not a bool. The bare form only survives at the end of the command line or in
+        // front of a sequence option (`-s`, `-p`, `-e`), which is why the README spells out `-d false`.
+        using var parser = CommandLineParserFactory.Create();
+
+        Assert.IsType<NotParsed<Options>>(
+            parser.ParseArguments<Options>(new[] { "-s", "My.sln", "-d", "-f", "json" }));
+    }
+
     [Fact]
     public void Options_built_in_code_carry_the_same_defaults_as_the_command_line()
     {

@@ -38,13 +38,21 @@ namespace DotNet.Consolidate
             return (true, properties);
         }
 
+        /// <remarks>
+        /// The errors aren't printed: the parser's <c>HelpWriter</c> has already written a readable message to
+        /// stderr (see <see cref="CommandLineParserFactory"/>), and anything of our own would repeat it in a worse
+        /// form — and put non-JSON text on stdout in <c>-f json</c> mode. What was missing is the exit code,
+        /// without which an unusable command line passes a build with 0. <c>--help</c> and <c>--version</c> arrive
+        /// here as errors too; those are requests that were satisfied, not failures.
+        /// </remarks>
         private static void HandleParseError(IEnumerable<Error> errors)
         {
-            Console.WriteLine("The following parsing errors occurred when parsing the solution file");
-            foreach (var error in errors)
+            if (errors.All(error => error is HelpRequestedError or VersionRequestedError))
             {
-                Console.WriteLine("Type {0} StopProcessing {1}", error.Tag, error.StopsProcessing);
+                return;
             }
+
+            Environment.ExitCode = 1;
         }
 
         private static void Main(string[] args)
@@ -87,7 +95,7 @@ namespace DotNet.Consolidate
             var solutionInfoProvider = new SolutionInfoProvider(
                 new ProjectParser(logger, globalProperties),
                 logger,
-                options.ReadDirectoryBuildProps);
+                options.ReadDirectoryBuildProps ?? true);
 
             ICollection<string> solutions;
             if (options.Solutions?.Any() == true)
