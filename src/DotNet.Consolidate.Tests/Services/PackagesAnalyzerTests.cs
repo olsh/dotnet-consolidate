@@ -349,6 +349,33 @@ public class PackagesAnalyzerTests
     }
 
     [Fact]
+    public void An_update_above_its_own_include_is_reported_beside_the_declared_override()
+    {
+        // MSBuild applies an update to the items declared before it, so an Update sitting above its own
+        // Include never reaches it: the csproj declares 1.0.0 and separately pushes the inherited item to
+        // 4.0.0. Both pin the props version, at two different versions, and both belong in the report --
+        // skipping the update because the ID happened to be declared hid the second one.
+        var projectInfos = new List<ProjectInfo> { CreateUpdateAboveIncludeProject() };
+
+        var reportedVersions = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(projectInfos, new Options())
+            .Select(o => $"{o.ProjectVersion.OriginalValue} overrides {o.DirectoryBuildPropsVersion.OriginalValue}")
+            .OrderBy(o => o);
+
+        Assert.Equal(new[] { "1.0.0 overrides 3.0.1", "4.0.0 overrides 3.0.1" }, reportedVersions);
+    }
+
+    [Fact]
+    public void An_update_above_its_own_include_leaves_both_versions_referenced()
+    {
+        // The counterpart of the report above: this is what the project actually restores.
+        var versions = PackagesAnalyzer.GetEffectivePackages(CreateUpdateAboveIncludeProject())
+            .Select(p => p.Version.OriginalValue)
+            .OrderBy(v => v);
+
+        Assert.Equal(new[] { "1.0.0", "4.0.0" }, versions);
+    }
+
+    [Fact]
     public void A_removed_package_is_not_an_override()
     {
         var projectInfos = new List<ProjectInfo> { CreateInheritingProject(removedPackageId: "Serilog") };
@@ -396,6 +423,29 @@ public class PackagesAnalyzerTests
             {
                 new NuGetPackageInfo(packageId, new Version(version), NuGetPackageReferenceType.Direct)
             });
+    }
+
+    /// <summary>
+    /// A project shaped the way <c>&lt;PackageReference Update="Serilog" Version="4.0.0" /&gt;</c> above its
+    /// own <c>&lt;PackageReference Include="Serilog" Version="1.0.0" /&gt;</c> leaves one, inheriting
+    /// <c>Serilog 3.0.1</c>: the evaluator kept the declared 1.0.0, because an update reaches only the items
+    /// above it, and carried the update out for the inherited entry.
+    /// </summary>
+    private static ProjectInfo CreateUpdateAboveIncludeProject()
+    {
+        return new ProjectInfo(
+            "ProjectB",
+            "ProjectB",
+            new List<NuGetPackageInfo>
+            {
+                new NuGetPackageInfo("Serilog", new Version("1.0.0"), NuGetPackageReferenceType.Direct),
+                new NuGetPackageInfo("Serilog", new Version("3.0.1"), NuGetPackageReferenceType.Inherited)
+            },
+            new[] { new PackageVersionUpdate("Serilog", new Version("4.0.0"), true) },
+            new List<string>())
+        {
+            DirectoryBuildPropsFile = PropsFile
+        };
     }
 
     /// <summary>

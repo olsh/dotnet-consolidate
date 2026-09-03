@@ -218,21 +218,34 @@ namespace DotNet.Consolidate.Services
         /// <see cref="ProjectInfo.PackageUpdates"/> instead.
         /// </summary>
         /// <remarks>
-        /// An ID the project also declares is skipped: the update has by then been applied to that
-        /// <see cref="NuGetPackageReferenceType.Direct"/> entry, so both forms would print the same line. One
-        /// the project removes is skipped too — it isn't referenced at all any more.
+        /// <para>
+        /// Skipped when the project also declares the ID <b>at the version the update sets</b>: an
+        /// <c>Update</c> that follows the <c>Include</c> it names has by then been applied to that
+        /// <see cref="NuGetPackageReferenceType.Direct"/> entry, so the two forms describe one override and
+        /// would print the same line.
+        /// </para>
+        /// <para>
+        /// Matching the version too is what makes that safe. An <c>Update</c> placed <i>above</i> its own
+        /// <c>Include</c> never reaches it — MSBuild applies an update to the items declared before it — so
+        /// the project pins the props version twice, at two different versions, and both are worth reporting.
+        /// Skipping on the ID alone hid the second one.
+        /// </para>
+        /// <para>
+        /// An ID the project removes is skipped outright: it isn't referenced at all any more.
+        /// </para>
         /// </remarks>
         private static IEnumerable<DirectoryBuildPropsOverride> FindUpdatedPackages(
             ProjectInfo projectInfo,
-            IEnumerable<NuGetPackageInfo> directPackages,
+            IReadOnlyCollection<NuGetPackageInfo> directPackages,
             ILookup<string, NuGetPackageInfo> inheritedPackages)
         {
-            var declaredPackageIds = new HashSet<string>(directPackages.Select(p => p.Id), PackageIdComparer);
             var removedPackageIds = new HashSet<string>(projectInfo.RemovedPackageIds, PackageIdComparer);
 
             return projectInfo.PackageUpdates
-                .Where(update => !declaredPackageIds.Contains(update.Id)
-                                 && !removedPackageIds.Contains(update.Id))
+                .Where(update => !removedPackageIds.Contains(update.Id)
+                                 && !directPackages.Any(package =>
+                                     PackageIdComparer.Equals(package.Id, update.Id)
+                                     && package.Version == update.Version))
                 .SelectMany(
                     update => inheritedPackages[update.Id],
                     (update, inheritedPackage) => new DirectoryBuildPropsOverride(
