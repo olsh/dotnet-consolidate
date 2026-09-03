@@ -39,20 +39,17 @@ namespace DotNet.Consolidate
         }
 
         /// <remarks>
-        /// The errors aren't printed: the parser's <c>HelpWriter</c> has already written a readable message to
-        /// stderr (see <see cref="CommandLineParserFactory"/>), and anything of our own would repeat it in a worse
-        /// form — and put non-JSON text on stdout in <c>-f json</c> mode. What was missing is the exit code,
-        /// without which an unusable command line passes a build with 0. <c>--help</c> and <c>--version</c> arrive
-        /// here as errors too; those are requests that were satisfied, not failures.
+        /// An unusable command line has to fail the run: without the exit code it passes a build with 0, having
+        /// analyzed nothing. What is reported, and where, belongs to <see cref="CommandLineErrorReporter"/> — the
+        /// arguments are handed to it because the format the caller asked for can only be recovered from them once
+        /// the parse has failed.
         /// </remarks>
-        private static void HandleParseError(IEnumerable<Error> errors)
+        private static void HandleParseError(string[] args, IEnumerable<Error> errors)
         {
-            if (errors.All(error => error is HelpRequestedError or VersionRequestedError))
+            if (CommandLineErrorReporter.Report(args, errors, Console.Out))
             {
-                return;
+                Environment.ExitCode = 1;
             }
-
-            Environment.ExitCode = 1;
         }
 
         private static void Main(string[] args)
@@ -61,7 +58,7 @@ namespace DotNet.Consolidate
 
             parser.ParseArguments<Options>(args)
                 .WithParsed(Consolidate)
-                .WithNotParsed(HandleParseError);
+                .WithNotParsed(errors => HandleParseError(args, errors));
         }
 
         // ReSharper disable once CognitiveComplexity
