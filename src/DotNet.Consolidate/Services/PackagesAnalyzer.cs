@@ -9,14 +9,20 @@ using Version = DotNet.Consolidate.Models.Version;
 
 namespace DotNet.Consolidate.Services
 {
-    public class PackagesAnalyzer
+    /// <remarks>
+    /// Static, like the other stateless services here: the class holds nothing but
+    /// <see cref="PackageIdComparer"/>, and the analysis is a pure function of the projects and the options.
+    /// </remarks>
+    public static class PackagesAnalyzer
     {
         // NuGet package IDs are case-insensitive, so `Serilog` and `serilog` are the same package — when
         // grouping, when filtering with `-p`/`-e`, and when deciding a `-p` ID isn't in the solution. Every
         // package ID comparison in the tool goes through this comparer so those three can't drift apart.
         private static readonly StringComparer PackageIdComparer = StringComparer.OrdinalIgnoreCase;
 
-        public List<AnalysisResult> FindNonConsolidatedPackages(ICollection<ProjectInfo> projectInfos, Options options)
+        public static List<AnalysisResult> FindNonConsolidatedPackages(
+            ICollection<ProjectInfo> projectInfos,
+            Options options)
         {
             // The casing of the first project that references a package is the one that gets reported.
             var analysisResults = new Dictionary<string, AnalysisResult>(PackageIdComparer);
@@ -66,7 +72,7 @@ namespace DotNet.Consolidate.Services
         /// doesn't read <c>Update</c> at all.
         /// </para>
         /// </remarks>
-        public List<DirectoryBuildPropsOverride> FindDirectoryBuildPropsOverrides(
+        public static List<DirectoryBuildPropsOverride> FindDirectoryBuildPropsOverrides(
             ICollection<ProjectInfo> projectInfos,
             Options options)
         {
@@ -121,7 +127,7 @@ namespace DotNet.Consolidate.Services
         /// filters accept must never be reported as missing, and the other way round.
         /// </remarks>
         /// <returns>The requested IDs as the user typed them, so the report echoes back their casing.</returns>
-        public List<string> FindPackageIdsNotInSolution(
+        public static List<string> FindPackageIdsNotInSolution(
             ICollection<ProjectInfo> projectInfos,
             IReadOnlyCollection<string> requestedPackageIds)
         {

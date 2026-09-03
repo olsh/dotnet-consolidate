@@ -113,8 +113,6 @@ namespace DotNet.Consolidate
 
             var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(solutions);
 
-            var packagesAnalyzer = new PackagesAnalyzer();
-
             foreach (var solutionInfo in solutionsInfo)
             {
                 logger.Progress($"Analyzing packages in {solutionInfo.SolutionFile}");
@@ -127,9 +125,8 @@ namespace DotNet.Consolidate
                 }
 
                 var nonConsolidatedPackages =
-                    packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                var analysisResult =
-                    CreateAnalysisResult(packagesAnalyzer, solutionInfo, nonConsolidatedPackages, options);
+                    PackagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
+                var analysisResult = CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options);
                 outputWriter.WriteAnalysisResults(analysisResult);
 
                 // A `-p` package that no project references is a failure too: it's usually a typo, and exiting 0
@@ -144,7 +141,6 @@ namespace DotNet.Consolidate
         }
 
         private static SolutionAnalysisResult CreateAnalysisResult(
-            PackagesAnalyzer packagesAnalyzer,
             SolutionInfo solutionInfo,
             List<AnalysisResult> nonConsolidatedPackages,
             Options options)
@@ -154,12 +150,12 @@ namespace DotNet.Consolidate
             // The analyzer owns this so it compares IDs exactly the way its `-p`/`-e` filters do — otherwise
             // a package the filter matched could still be reported as missing from the solution.
             var packageIdsNotFoundInSolution =
-                packagesAnalyzer.FindPackageIdsNotInSolution(solutionInfo.ProjectInfos, requestedPackageIds);
+                PackagesAnalyzer.FindPackageIdsNotInSolution(solutionInfo.ProjectInfos, requestedPackageIds);
 
             // With `-d false` there are no props files to inherit from, so this is empty either way and needs
             // no case of its own.
             var directoryBuildPropsOverrides = options.ReportOverridenDirectoryBuildProps ?? true
-                ? packagesAnalyzer.FindDirectoryBuildPropsOverrides(solutionInfo.ProjectInfos, options)
+                ? PackagesAnalyzer.FindDirectoryBuildPropsOverrides(solutionInfo.ProjectInfos, options)
                 : new List<DirectoryBuildPropsOverride>();
 
             return new SolutionAnalysisResult(

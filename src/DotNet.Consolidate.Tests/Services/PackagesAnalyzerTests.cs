@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 using DotNet.Consolidate.Models;
 using DotNet.Consolidate.Services;
@@ -15,7 +15,6 @@ public class PackagesAnalyzerTests
     public void Versions_with_trailing_zeroes_are_the_same()
     {
         // This case may happen when you have mixed project types in your solution
-        var analyzer = new PackagesAnalyzer();
         var info = new ProjectInfo(
             "Test",
             "Test",
@@ -26,7 +25,7 @@ public class PackagesAnalyzerTests
             });
         var projectInfos = new List<ProjectInfo> { info };
         var options = new Options();
-        var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
     }
@@ -34,7 +33,6 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Packages_with_different_versions_are_not_consolidated()
     {
-        var analyzer = new PackagesAnalyzer();
         var info = new ProjectInfo(
             "Test",
             "Test",
@@ -45,7 +43,7 @@ public class PackagesAnalyzerTests
             });
         var projectInfos = new List<ProjectInfo> { info };
         var options = new Options();
-        var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
     }
@@ -56,7 +54,6 @@ public class PackagesAnalyzerTests
     [InlineData("", false)]
     public void Packages_version_exclude_regex_correctly_matches(string excludedPackageVersionsRegex, bool shouldMatch)
     {
-        var analyzer = new PackagesAnalyzer();
         var info = new ProjectInfo(
             "Test",
             "Test",
@@ -67,7 +64,7 @@ public class PackagesAnalyzerTests
             });
         var projectInfos = new List<ProjectInfo> { info };
         var options = new Options { ExcludedPackageVersionsRegex = excludedPackageVersionsRegex };
-        var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(
             result,
@@ -77,10 +74,9 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Package_ids_given_with_p_are_matched_case_insensitively()
     {
-        var analyzer = new PackagesAnalyzer();
         var options = new Options { PackageIds = new List<string> { "serilog" } };
 
-        var result = analyzer.FindNonConsolidatedPackages(CreateSerilogProjects(), options);
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateSerilogProjects(), options);
 
         var analysisResult = Assert.Single(result);
         Assert.Equal("Serilog", analysisResult.NuGetPackageId);
@@ -89,10 +85,9 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Package_ids_given_with_e_are_matched_case_insensitively()
     {
-        var analyzer = new PackagesAnalyzer();
         var options = new Options { ExcludedPackageIds = new List<string> { "serilog" } };
 
-        var result = analyzer.FindNonConsolidatedPackages(CreateSerilogProjects(), options);
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateSerilogProjects(), options);
 
         Assert.Empty(result);
     }
@@ -102,14 +97,13 @@ public class PackagesAnalyzerTests
     {
         // NuGet package IDs are case-insensitive, so this is one package at two versions, not two packages
         // each consolidated with itself.
-        var analyzer = new PackagesAnalyzer();
         var projectInfos = new List<ProjectInfo>
         {
             CreateProject("ProjectA", "Serilog", "1.0.0"),
             CreateProject("ProjectB", "serilog", "2.0.0")
         };
 
-        var result = analyzer.FindNonConsolidatedPackages(projectInfos, new Options());
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(projectInfos, new Options());
 
         var analysisResult = Assert.Single(result);
         Assert.Equal(2, analysisResult.PackageVersions.Count);
@@ -118,9 +112,7 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Package_ids_present_in_a_different_case_are_not_reported_as_missing()
     {
-        var analyzer = new PackagesAnalyzer();
-
-        var result = analyzer.FindPackageIdsNotInSolution(
+        var result = PackagesAnalyzer.FindPackageIdsNotInSolution(
             new List<ProjectInfo> { CreateProject("ProjectA", "Serilog", "1.0.0") },
             new List<string> { "serilog" });
 
@@ -130,9 +122,7 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Package_ids_absent_from_the_solution_are_reported_as_missing()
     {
-        var analyzer = new PackagesAnalyzer();
-
-        var result = analyzer.FindPackageIdsNotInSolution(
+        var result = PackagesAnalyzer.FindPackageIdsNotInSolution(
             new List<ProjectInfo> { CreateProject("ProjectA", "Serilog", "1.0.0") },
             new List<string> { "NotReferenced" });
 
@@ -143,9 +133,7 @@ public class PackagesAnalyzerTests
     [Fact]
     public void A_package_declared_by_both_the_project_and_its_props_file_is_an_override()
     {
-        var analyzer = new PackagesAnalyzer();
-
-        var result = analyzer.FindDirectoryBuildPropsOverrides(
+        var result = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
             new List<ProjectInfo> { CreateOverridingProject("Serilog", "4.0.0", "Serilog", "3.0.1") },
             new Options());
 
@@ -162,9 +150,7 @@ public class PackagesAnalyzerTests
     {
         // Redeclaring the package is a duplicate item to MSBuild whatever the version, and the copy silently
         // stops following the props file the next time it is bumped.
-        var analyzer = new PackagesAnalyzer();
-
-        var result = analyzer.FindDirectoryBuildPropsOverrides(
+        var result = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
             new List<ProjectInfo> { CreateOverridingProject("Serilog", "3.0.1", "Serilog", "3.0.1") },
             new Options());
 
@@ -176,9 +162,7 @@ public class PackagesAnalyzerTests
     [Fact]
     public void An_override_is_detected_when_the_two_package_ids_differ_only_in_case()
     {
-        var analyzer = new PackagesAnalyzer();
-
-        var result = analyzer.FindDirectoryBuildPropsOverrides(
+        var result = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
             new List<ProjectInfo> { CreateOverridingProject("serilog", "4.0.0", "Serilog", "3.0.1") },
             new Options());
 
@@ -191,10 +175,8 @@ public class PackagesAnalyzerTests
     [Fact]
     public void A_package_only_inherited_or_only_declared_is_not_an_override()
     {
-        var analyzer = new PackagesAnalyzer();
-
         // Serilog only inherited, Moq only declared — neither is overridden by the other.
-        var result = analyzer.FindDirectoryBuildPropsOverrides(
+        var result = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
             new List<ProjectInfo> { CreateOverridingProject("Moq", "4.18.1", "Serilog", "3.0.1") },
             new Options());
 
@@ -204,24 +186,23 @@ public class PackagesAnalyzerTests
     [Fact]
     public void Overrides_are_filtered_by_the_same_package_id_options_as_the_consolidation_report()
     {
-        var analyzer = new PackagesAnalyzer();
         var projectInfos = new List<ProjectInfo>
         {
             CreateOverridingProject("Serilog", "4.0.0", "Serilog", "3.0.1")
         };
 
         Assert.Single(
-            analyzer.FindDirectoryBuildPropsOverrides(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
                 projectInfos,
                 new Options { PackageIds = new List<string> { "serilog" } }));
 
         Assert.Empty(
-            analyzer.FindDirectoryBuildPropsOverrides(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
                 projectInfos,
                 new Options { PackageIds = new List<string> { "Moq" } }));
 
         Assert.Empty(
-            analyzer.FindDirectoryBuildPropsOverrides(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
                 projectInfos,
                 new Options { ExcludedPackageIds = new List<string> { "serilog" } }));
     }
