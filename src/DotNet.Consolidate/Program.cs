@@ -113,58 +113,55 @@ namespace DotNet.Consolidate
 
             var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(solutions);
 
-            foreach (var solutionInfo in solutionsInfo)
+            if (options.CrossSolution)
             {
-                logger.Progress($"Analyzing packages in {solutionInfo.SolutionFile}");
-                if (!solutionInfo.IsParsedWithoutIssues)
+                foreach (var solutionInfo in solutionsInfo)
                 {
-                    logger.Message(
-                        $"Solution {solutionInfo.SolutionFile} wasn't parsed correctly, the results may be invalid");
-
-                    Environment.ExitCode = 1;
+                    ReportParsing(solutionInfo, logger);
                 }
 
-                var nonConsolidatedPackages =
-                    PackagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
-                var analysisResult = CreateAnalysisResult(solutionInfo, nonConsolidatedPackages, options);
-                outputWriter.WriteAnalysisResults(analysisResult);
-
-                // A `-p` package that no project references is a failure too: it's usually a typo, and exiting 0
-                // would let it pass a build silently.
-                if (nonConsolidatedPackages.Any() || analysisResult.PackageIdsNotFoundInSolution.Any())
+                // With nothing to pool there is nothing to report on, and "No solution files were found" has
+                // already been logged. A report naming no solution at all would only be confusing.
+                if (solutionsInfo.Count > 0)
                 {
-                    Environment.ExitCode = 1;
+                    WriteResult(SolutionAnalyzer.AnalyzeAcrossSolutions(solutionsInfo, options), outputWriter);
+                }
+            }
+            else
+            {
+                foreach (var solutionInfo in solutionsInfo)
+                {
+                    ReportParsing(solutionInfo, logger);
+                    WriteResult(SolutionAnalyzer.Analyze(solutionInfo, options), outputWriter);
                 }
             }
 
             outputWriter.Flush();
         }
 
-        private static SolutionAnalysisResult CreateAnalysisResult(
-            SolutionInfo solutionInfo,
-            List<AnalysisResult> nonConsolidatedPackages,
-            Options options)
+        private static void ReportParsing(SolutionInfo solutionInfo, ILogger logger)
         {
-            var requestedPackageIds = options.PackageIds?.ToList() ?? new List<string>();
+            logger.Progress($"Analyzing packages in {solutionInfo.SolutionFile}");
+            if (solutionInfo.IsParsedWithoutIssues)
+            {
+                return;
+            }
 
-            // The analyzer owns this so it compares IDs exactly the way its `-p`/`-e` filters do — otherwise
-            // a package the filter matched could still be reported as missing from the solution.
-            var packageIdsNotFoundInSolution =
-                PackagesAnalyzer.FindPackageIdsNotInSolution(solutionInfo.ProjectInfos, requestedPackageIds);
+            logger.Message($"Solution {solutionInfo.SolutionFile} wasn't parsed correctly, the results may be invalid");
 
-            // With `-d false` there are no props files to inherit from, so this is empty either way and needs
-            // no case of its own.
-            var directoryBuildPropsOverrides = options.ReportOverridenDirectoryBuildProps ?? true
-                ? PackagesAnalyzer.FindDirectoryBuildPropsOverrides(solutionInfo.ProjectInfos, options)
-                : new List<DirectoryBuildPropsOverride>();
+            Environment.ExitCode = 1;
+        }
 
-            return new SolutionAnalysisResult(
-                solutionInfo.SolutionFile,
-                solutionInfo.IsParsedWithoutIssues,
-                nonConsolidatedPackages,
-                requestedPackageIds,
-                packageIdsNotFoundInSolution,
-                directoryBuildPropsOverrides);
+        private static void WriteResult(SolutionAnalysisResult analysisResult, IOutputWriter outputWriter)
+        {
+            outputWriter.WriteAnalysisResults(analysisResult);
+
+            // A `-p` package that no project references is a failure too: it's usually a typo, and exiting 0
+            // would let it pass a build silently.
+            if (analysisResult.NonConsolidatedPackages.Any() || analysisResult.PackageIdsNotFoundInSolution.Any())
+            {
+                Environment.ExitCode = 1;
+            }
         }
     }
 }

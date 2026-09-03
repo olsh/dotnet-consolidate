@@ -61,6 +61,17 @@ namespace DotNet.Consolidate.Models
         public string ProjectDirectory { get; }
 
         /// <summary>
+        /// Gets the full path of the project file this was read from, <c>null</c> when it isn't known.
+        /// </summary>
+        /// <remarks>
+        /// Set by <see cref="Services.SolutionInfoProvider"/>, which already computes it to find the project.
+        /// It is what identifies a project that belongs to more than one solution, so
+        /// <see cref="Services.SolutionAnalyzer.PoolProjects"/> can count it once — the name can't do that job
+        /// alone, since a solution is free to display two projects in one directory under the same name.
+        /// </remarks>
+        public string? ProjectFile { get; init; }
+
+        /// <summary>
         /// Gets or sets the full path of the <c>Directory.Build.props</c> file this project inherits from,
         /// <c>null</c> when none applies.
         /// </summary>

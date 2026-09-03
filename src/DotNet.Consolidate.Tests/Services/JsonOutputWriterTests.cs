@@ -51,6 +51,65 @@ public class JsonOutputWriterTests
     }
 
     [Fact]
+    public void A_single_solution_is_written_with_a_one_element_solution_file_list()
+    {
+        var output = new StringWriter();
+        var writer = new JsonOutputWriter(output, new List<string>());
+
+        writer.WriteAnalysisResults(CreateResult("My.sln"));
+        writer.Flush();
+
+        using var document = JsonDocument.Parse(output.ToString());
+        var solution = Assert.Single(
+            document.RootElement.GetProperty("solutions")
+                .EnumerateArray());
+
+        // The field is always there, so a consumer never has to know which mode produced the document.
+        Assert.Equal(
+            "My.sln",
+            solution.GetProperty("solutionFile")
+                .GetString());
+        Assert.Equal(
+            new[] { "My.sln" },
+            solution.GetProperty("solutionFiles")
+                .EnumerateArray()
+                .Select(s => s.GetString()));
+    }
+
+    [Fact]
+    public void Every_solution_a_cross_solution_report_covers_is_written()
+    {
+        var output = new StringWriter();
+        var writer = new JsonOutputWriter(output, new List<string>());
+
+        writer.WriteAnalysisResults(
+            new SolutionAnalysisResult(
+                new[] { "cms.sln", "TheSite.sln" },
+                isParsedWithoutIssues: true,
+                new List<AnalysisResult>(),
+                new List<string>(),
+                new List<string>(),
+                new List<DirectoryBuildPropsOverride>()));
+        writer.Flush();
+
+        using var document = JsonDocument.Parse(output.ToString());
+
+        // One entry for the whole set, not one per solution.
+        var solution = Assert.Single(
+            document.RootElement.GetProperty("solutions")
+                .EnumerateArray());
+        Assert.Equal(
+            "cms.sln, TheSite.sln",
+            solution.GetProperty("solutionFile")
+                .GetString());
+        Assert.Equal(
+            new[] { "cms.sln", "TheSite.sln" },
+            solution.GetProperty("solutionFiles")
+                .EnumerateArray()
+                .Select(s => s.GetString()));
+    }
+
+    [Fact]
     public void Property_names_are_camel_cased()
     {
         var output = new StringWriter();

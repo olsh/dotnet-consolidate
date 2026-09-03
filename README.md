@@ -38,6 +38,24 @@ or multiple solutions
 
 If no solution is specified, every `.sln` and `.slnx` file in the working directory is analyzed.
 
+Several solutions are checked one at a time, each against itself. To check them as one set instead — so a package referenced at 1.0.0 by a project in one solution and at 2.0.0 by a project in another is reported, even though neither solution disagrees with itself — add `-c` (or `--crossSolution`):
+
+`dotnet consolidate -s cms.sln TheSite.sln --crossSolution`
+
+```
+Found 1 non-consolidated packages
+
+----------------------------
+Serilog
+----------------------------
+Web - 1.0.0
+Api - 2.0.0
+```
+
+There is one report for the whole set rather than one per solution, and a project belonging to more than one of them is counted **once** — the reading from the first solution on the command line is the one that is kept, including which `Directory.Build.props` it inherited from and therefore what the `-o` report says about it. That matters because every solution is searched for props files from its own directory, so the same shared project can otherwise be read twice with different inherited versions and appear to disagree with itself.
+
+One thing to know before putting `-c` in a build: `-p` asks whether a package is referenced *anywhere in the set*, so an ID that only one of the solutions references is no longer reported as missing. That is the one way this flag can turn a failing run into a passing one.
+
 You can also optionally specify the a package ID if you want only a single package to be consolidated
 
 `dotnet consolidate -s YourSolution.sln -p PackageId`
@@ -94,7 +112,7 @@ ProjectB restores Serilog 4.0.0, and that is the version it is checked against. 
 
 Both only act on packages the project inherits, so `-d false` leaves them with nothing to change. Within a project file, MSBuild order applies — an `Update` or a `Remove` affects the `PackageReference` items declared above it and no others.
 
-If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
+If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies. With `-c` the projects compared are those of every given solution, so a disagreement *between* two solutions fails the run just as one inside a single solution does.
 
 A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.
 
@@ -112,6 +130,7 @@ stdout then carries a single JSON document and nothing else — progress message
   "solutions": [
     {
       "solutionFile": "YourSolution.sln",
+      "solutionFiles": ["YourSolution.sln"],
       "isParsedWithoutIssues": true,
       "packageIdsNotFound": [],
       "nonConsolidatedPackages": [
@@ -136,6 +155,8 @@ stdout then carries a single JSON document and nothing else — progress message
   ]
 }
 ```
+
+`solutionFiles` lists the solutions an entry covers and is always present. Ordinarily that is the one solution the entry is about, and `solutionFile` repeats it; with `-c` there is a single entry for the whole set, `solutionFiles` holds each path exactly and `solutionFile` is them joined for display.
 
 A command line the tool rejects produces that same document rather than nothing at all — the parser's complaint in `warnings`, an empty `solutions`, and a non-success status code:
 

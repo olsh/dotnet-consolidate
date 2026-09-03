@@ -30,19 +30,30 @@ namespace DotNet.Consolidate.Models
     {
         public JsonSolutionReport(
             string solutionFile,
+            IReadOnlyCollection<string> solutionFiles,
             bool isParsedWithoutIssues,
             IReadOnlyCollection<string> packageIdsNotFound,
             IReadOnlyCollection<JsonPackageReport> nonConsolidatedPackages,
             IReadOnlyCollection<JsonDirectoryBuildPropsOverrideReport> directoryBuildPropsOverrides)
         {
             SolutionFile = solutionFile;
+            SolutionFiles = solutionFiles;
             IsParsedWithoutIssues = isParsedWithoutIssues;
             PackageIdsNotFound = packageIdsNotFound;
             NonConsolidatedPackages = nonConsolidatedPackages;
             DirectoryBuildPropsOverrides = directoryBuildPropsOverrides;
         }
 
+        /// <summary>
+        /// Gets the solutions this entry covers, as one label. With <c>-c</c> that is every solution analyzed
+        /// together, joined — <see cref="SolutionFiles"/> is the one to read them from.
+        /// </summary>
         public string SolutionFile { get; }
+
+        /// <summary>
+        /// Gets the solutions this entry covers, one per element. A single-solution run has exactly one.
+        /// </summary>
+        public IReadOnlyCollection<string> SolutionFiles { get; }
 
         public bool IsParsedWithoutIssues { get; }
 

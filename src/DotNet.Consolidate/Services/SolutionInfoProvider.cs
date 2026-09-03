@@ -84,13 +84,13 @@ namespace DotNet.Consolidate.Services
             // that a relative `-s` doesn't silently leave every project inheriting nothing.
             var candidates = directoryBuildPropsInfos
                 .Where(dbp => !string.IsNullOrEmpty(dbp.DirectoryName))
-                .Select(dbp => new { Props = dbp, Directory = ResolveDirectory(dbp.DirectoryName) })
+                .Select(dbp => new { Props = dbp, Directory = PathUtils.ResolveDirectory(dbp.DirectoryName) })
                 .OrderByDescending(dbp => dbp.Directory.Length)
                 .ToList();
 
             foreach (var projectInfo in projectsInfo)
             {
-                var projectDirectory = ResolveDirectory(projectInfo.ProjectDirectory);
+                var projectDirectory = PathUtils.ResolveDirectory(projectInfo.ProjectDirectory);
                 var directoryBuildProps = candidates
                     .FirstOrDefault(dbp => PathUtils.IsSameOrUnderDirectory(projectDirectory, dbp.Directory))
                     ?.Props;
@@ -110,13 +110,6 @@ namespace DotNet.Consolidate.Services
                     }
                 }
             }
-        }
-
-        private static string ResolveDirectory(string directory)
-        {
-            // A project sitting next to a solution passed as a bare file name has no directory part at all,
-            // and Path.GetFullPath rejects an empty string.
-            return Path.GetFullPath(string.IsNullOrEmpty(directory) ? "." : directory);
         }
 
         private (bool isSuccessParsing, SolutionModel? solution) TryGetSolutionInfo(string filePath)
@@ -196,7 +189,11 @@ namespace DotNet.Consolidate.Services
                     if (File.Exists(packageConfigPath))
                     {
                         var packages = _projectParser.ParsePackageConfig(packageConfigPath);
-                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, packages));
+                        projectInfos.Add(
+                            new ProjectInfo(project.ActualDisplayName, projectDirectory, packages)
+                            {
+                                ProjectFile = projectFilePath
+                            });
                     }
                     else if (File.Exists(projectFilePath))
                     {
@@ -207,12 +204,18 @@ namespace DotNet.Consolidate.Services
                                 projectDirectory,
                                 evaluation.Packages,
                                 evaluation.PackageUpdates,
-                                evaluation.RemovedPackageIds));
+                                evaluation.RemovedPackageIds)
+                            {
+                                ProjectFile = projectFilePath
+                            });
                     }
                     else
                     {
                         projectInfos.Add(
-                            new ProjectInfo(project.ActualDisplayName, projectDirectory, new List<NuGetPackageInfo>()));
+                            new ProjectInfo(project.ActualDisplayName, projectDirectory, new List<NuGetPackageInfo>())
+                            {
+                                ProjectFile = projectFilePath
+                            });
                         _logger.Message($"Unable to find package.config file for project {project.FilePath}");
                     }
                 }

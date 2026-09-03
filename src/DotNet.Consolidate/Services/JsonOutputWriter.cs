@@ -73,6 +73,7 @@ namespace DotNet.Consolidate.Services
             _solutions.Add(
                 new JsonSolutionReport(
                     result.SolutionFile,
+                    result.SolutionFiles,
                     result.IsParsedWithoutIssues,
                     result.PackageIdsNotFoundInSolution.ToList(),
                     packages,
