@@ -94,46 +94,59 @@ namespace DotNet.Consolidate.Services
         /// <summary>
         /// Folds the target framework passes into one result.
         /// </summary>
-        /// <remarks>
-        /// References and updates are unioned, because one that applies to a single target framework is still
-        /// restored and still belongs in the consolidation check. Removals are <b>intersected</b> for the same
-        /// reason read the other way round: a package dropped for one framework and kept for another is still
-        /// referenced by the project. An update that isn't made by every pass leaves the inherited version
-        /// standing beside it — see <see cref="PackageVersionUpdate.ReplacesInheritedVersion"/>.
-        /// </remarks>
         private static ProjectEvaluationResult Merge(IReadOnlyList<EvaluationPass> passes)
         {
-            var packages = new List<NuGetPackageInfo>();
-            var seenPackages = new HashSet<(string Id, string Version)>();
-            var updates = new List<(string Id, Version Version)>();
-            var seenUpdates = new HashSet<(string Id, string Version)>();
-            var certainUpdateCounts = new Dictionary<string, int>(NuGetPackageInfo.IdComparer);
-            HashSet<string>? removedPackageIds = null;
+            return new ProjectEvaluationResult(
+                MergePackages(passes),
+                MergeUpdates(passes),
+                MergeRemovedPackageIds(passes));
+        }
 
+        /// <remarks>
+        /// Unioned, deduplicated on ID and normalized version: a reference that applies to only one target
+        /// framework is still restored, and still belongs in the consolidation check.
+        /// </remarks>
+        private static List<NuGetPackageInfo> MergePackages(IReadOnlyList<EvaluationPass> passes)
+        {
+            return passes
+                .SelectMany(pass => pass.Packages)
+                .DistinctBy(package => (package.Id.ToUpperInvariant(), package.Version.NormalizedValue))
+                .ToList();
+        }
+
+        /// <remarks>
+        /// Unioned like the references, but an update carries how sure of it we are: one made by every pass
+        /// supersedes the inherited version, while one made by only some of them leaves that version standing
+        /// beside it, because both are really restored. See
+        /// <see cref="PackageVersionUpdate.ReplacesInheritedVersion"/>.
+        /// </remarks>
+        private static List<PackageVersionUpdate> MergeUpdates(IReadOnlyList<EvaluationPass> passes)
+        {
+            var certainPassCounts = passes
+                .SelectMany(pass => pass.PackageUpdates)
+                .Where(update => update.Value.IsCertain)
+                .GroupBy(update => update.Key, NuGetPackageInfo.IdComparer)
+                .ToDictionary(updates => updates.Key, updates => updates.Count(), NuGetPackageInfo.IdComparer);
+
+            return passes
+                .SelectMany(pass => pass.PackageUpdates)
+                .DistinctBy(update => (update.Key.ToUpperInvariant(), update.Value.Version.NormalizedValue))
+                .Select(update => new PackageVersionUpdate(
+                    update.Key,
+                    update.Value.Version,
+                    certainPassCounts.TryGetValue(update.Key, out var certain) && certain == passes.Count))
+                .ToList();
+        }
+
+        /// <remarks>
+        /// <b>Intersected</b>, where the other two are unioned: a package dropped for one target framework and
+        /// kept for another is still referenced by the project.
+        /// </remarks>
+        private static IReadOnlyCollection<string> MergeRemovedPackageIds(IReadOnlyList<EvaluationPass> passes)
+        {
+            HashSet<string>? removedPackageIds = null;
             foreach (var pass in passes)
             {
-                foreach (var package in pass.Packages)
-                {
-                    if (seenPackages.Add((package.Id.ToUpperInvariant(), package.Version.NormalizedValue)))
-                    {
-                        packages.Add(package);
-                    }
-                }
-
-                foreach (var update in pass.PackageUpdates)
-                {
-                    if (seenUpdates.Add((update.Key.ToUpperInvariant(), update.Value.Version.NormalizedValue)))
-                    {
-                        updates.Add((update.Key, update.Value.Version));
-                    }
-
-                    if (update.Value.IsCertain)
-                    {
-                        certainUpdateCounts.TryGetValue(update.Key, out var count);
-                        certainUpdateCounts[update.Key] = count + 1;
-                    }
-                }
-
                 if (removedPackageIds == null)
                 {
                     removedPackageIds = new HashSet<string>(pass.RemovedPackageIds, NuGetPackageInfo.IdComparer);
@@ -144,17 +157,7 @@ namespace DotNet.Consolidate.Services
                 }
             }
 
-            var packageUpdates = updates
-                .Select(u => new PackageVersionUpdate(
-                    u.Id,
-                    u.Version,
-                    certainUpdateCounts.TryGetValue(u.Id, out var certain) && certain == passes.Count))
-                .ToList();
-
-            return new ProjectEvaluationResult(
-                packages,
-                packageUpdates,
-                removedPackageIds ?? new HashSet<string>(NuGetPackageInfo.IdComparer));
+            return removedPackageIds ?? new HashSet<string>(NuGetPackageInfo.IdComparer);
         }
 
         /// <summary>

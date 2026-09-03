@@ -177,41 +177,8 @@ namespace DotNet.Consolidate.Services
                     .Where(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct)
                     .ToList();
 
-                foreach (var directPackage in directPackages)
-                {
-                    foreach (var inheritedPackage in inheritedPackages[directPackage.Id])
-                    {
-                        overrides.Add(
-                            new DirectoryBuildPropsOverride(
-                                projectInfo.ProjectName,
-                                directPackage.Id,
-                                directPackage.Version,
-                                inheritedPackage.Version,
-                                projectInfo.DirectoryBuildPropsFile ?? string.Empty));
-                    }
-                }
-
-                var declaredPackageIds = new HashSet<string>(directPackages.Select(p => p.Id), PackageIdComparer);
-                var removedPackageIds = new HashSet<string>(projectInfo.RemovedPackageIds, PackageIdComparer);
-
-                foreach (var update in projectInfo.PackageUpdates)
-                {
-                    if (declaredPackageIds.Contains(update.Id) || removedPackageIds.Contains(update.Id))
-                    {
-                        continue;
-                    }
-
-                    foreach (var inheritedPackage in inheritedPackages[update.Id])
-                    {
-                        overrides.Add(
-                            new DirectoryBuildPropsOverride(
-                                projectInfo.ProjectName,
-                                update.Id,
-                                update.Version,
-                                inheritedPackage.Version,
-                                projectInfo.DirectoryBuildPropsFile ?? string.Empty));
-                    }
-                }
+                overrides.AddRange(FindRedeclaredPackages(projectInfo, directPackages, inheritedPackages));
+                overrides.AddRange(FindUpdatedPackages(projectInfo, directPackages, inheritedPackages));
             }
 
             // Filtered the same way as the consolidation report, so `-p Serilog` doesn't leave override noise
@@ -225,6 +192,55 @@ namespace DotNet.Consolidate.Services
             }
 
             return reportedOverrides.ToList();
+        }
+
+        /// <summary>
+        /// The duplicate-<c>Include</c> form: a package the project re-declares itself, which is why it holds
+        /// a <see cref="NuGetPackageReferenceType.Direct"/> entry beside the inherited one.
+        /// </summary>
+        private static IEnumerable<DirectoryBuildPropsOverride> FindRedeclaredPackages(
+            ProjectInfo projectInfo,
+            IEnumerable<NuGetPackageInfo> directPackages,
+            ILookup<string, NuGetPackageInfo> inheritedPackages)
+        {
+            return directPackages.SelectMany(
+                directPackage => inheritedPackages[directPackage.Id],
+                (directPackage, inheritedPackage) => new DirectoryBuildPropsOverride(
+                    projectInfo.ProjectName,
+                    directPackage.Id,
+                    directPackage.Version,
+                    inheritedPackage.Version,
+                    projectInfo.DirectoryBuildPropsFile ?? string.Empty));
+        }
+
+        /// <summary>
+        /// The <c>Update</c> form, which leaves no second entry to notice and has to be paired from
+        /// <see cref="ProjectInfo.PackageUpdates"/> instead.
+        /// </summary>
+        /// <remarks>
+        /// An ID the project also declares is skipped: the update has by then been applied to that
+        /// <see cref="NuGetPackageReferenceType.Direct"/> entry, so both forms would print the same line. One
+        /// the project removes is skipped too — it isn't referenced at all any more.
+        /// </remarks>
+        private static IEnumerable<DirectoryBuildPropsOverride> FindUpdatedPackages(
+            ProjectInfo projectInfo,
+            IEnumerable<NuGetPackageInfo> directPackages,
+            ILookup<string, NuGetPackageInfo> inheritedPackages)
+        {
+            var declaredPackageIds = new HashSet<string>(directPackages.Select(p => p.Id), PackageIdComparer);
+            var removedPackageIds = new HashSet<string>(projectInfo.RemovedPackageIds, PackageIdComparer);
+
+            return projectInfo.PackageUpdates
+                .Where(update => !declaredPackageIds.Contains(update.Id)
+                                 && !removedPackageIds.Contains(update.Id))
+                .SelectMany(
+                    update => inheritedPackages[update.Id],
+                    (update, inheritedPackage) => new DirectoryBuildPropsOverride(
+                        projectInfo.ProjectName,
+                        update.Id,
+                        update.Version,
+                        inheritedPackage.Version,
+                        projectInfo.DirectoryBuildPropsFile ?? string.Empty));
         }
 
         /// <summary>
