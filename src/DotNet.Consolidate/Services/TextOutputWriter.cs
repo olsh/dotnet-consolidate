@@ -11,6 +11,11 @@ namespace DotNet.Consolidate.Services
     /// </summary>
     public class TextOutputWriter : IOutputWriter
     {
+        /// <summary>
+        /// The rule the report fences each section header with.
+        /// </summary>
+        private const string HeaderRule = "----------------------------";
+
         private readonly TextWriter _output;
 
         public TextOutputWriter(TextWriter output)
@@ -28,9 +33,9 @@ namespace DotNet.Consolidate.Services
 
             foreach (var package in result.NonConsolidatedPackages)
             {
-                _output.WriteLine("----------------------------");
+                _output.WriteLine(HeaderRule);
                 _output.WriteLine(package.NuGetPackageId);
-                _output.WriteLine("----------------------------");
+                _output.WriteLine(HeaderRule);
 
                 foreach (var packageVersion in package.PackageVersions.OrderBy(p => p.NuGetPackageVersion)
                              .ThenBy(p => p.ProjectName))
@@ -89,9 +94,9 @@ namespace DotNet.Consolidate.Services
 
             foreach (var package in overridesByPackage)
             {
-                _output.WriteLine("----------------------------");
+                _output.WriteLine(HeaderRule);
                 _output.WriteLine(package.Key);
-                _output.WriteLine("----------------------------");
+                _output.WriteLine(HeaderRule);
 
                 foreach (var packageOverride in package.OrderBy(o => o.ProjectName)
                              .ThenBy(o => o.ProjectVersion))
