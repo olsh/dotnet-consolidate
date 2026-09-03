@@ -13,7 +13,8 @@ namespace DotNet.Consolidate.Models
             string excludedPackageVersionsRegex,
             bool readDirectoryBuildProps,
             bool reportOverridenDirectoryBuildProps,
-            ICollection<string>? globalProperties)
+            ICollection<string>? globalProperties,
+            OutputFormat format)
         {
             Solutions = solutions;
             PackageIds = packageIds;
@@ -22,6 +23,7 @@ namespace DotNet.Consolidate.Models
             ReadDirectoryBuildProps = readDirectoryBuildProps;
             ReportOverridenDirectoryBuildProps = reportOverridenDirectoryBuildProps;
             GlobalProperties = globalProperties;
+            Format = format;
         }
 
         [Option(
@@ -66,5 +68,14 @@ namespace DotNet.Consolidate.Models
             HelpText =
                 "MSBuild properties in the Name=Value format, used when evaluating the conditions in project files, e.g. --property NuGetBuild=true Configuration=Release")]
         public ICollection<string>? GlobalProperties { get; }
+
+        [Option(
+            'f',
+            "format",
+            Required = false,
+            Default = OutputFormat.Text,
+            HelpText =
+                "Output format, Text or Json. Json prints a single JSON document to stdout and suppresses progress messages.")]
+        public OutputFormat Format { get; }
     }
 }

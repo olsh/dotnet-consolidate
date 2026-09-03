@@ -58,6 +58,34 @@ With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, a
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
+To get machine-readable output instead of the report, ask for the JSON format:
+
+`dotnet consolidate -s YourSolution.sln -f json`
+
+stdout then carries a single JSON document and nothing else — progress messages are suppressed rather than moved to stderr, so `dotnet consolidate -f json | ConvertFrom-Json` works and CI systems that treat any stderr output as a failure stay happy. Anything the tool would have reported along the way (a project that couldn't be parsed, a condition it couldn't evaluate) is carried in `warnings`. Exit codes are the same as for the text format.
+
+```json
+{
+  "warnings": [],
+  "solutions": [
+    {
+      "solutionFile": "YourSolution.sln",
+      "isParsedWithoutIssues": true,
+      "packageIdsNotFound": [],
+      "nonConsolidatedPackages": [
+        {
+          "packageId": "Newtonsoft.Json",
+          "packageVersions": [
+            { "projectName": "ProjectA", "version": "11.0.2" },
+            { "projectName": "ProjectB", "version": "13.0.3" }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
 ## MSBuild conditions
 
 `Condition` attributes on `PropertyGroup`, `ItemGroup` and `PackageReference` are evaluated, so a package reference that isn't actually active is left out of the check:

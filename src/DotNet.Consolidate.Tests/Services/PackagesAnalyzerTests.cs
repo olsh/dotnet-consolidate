@@ -30,7 +30,8 @@ public class PackagesAnalyzerTests
             string.Empty,
             true,
             true,
-            new List<string>());
+            new List<string>(),
+            OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
@@ -56,7 +57,8 @@ public class PackagesAnalyzerTests
             string.Empty,
             true,
             true,
-            new List<string>());
+            new List<string>(),
+            OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
@@ -85,7 +87,8 @@ public class PackagesAnalyzerTests
             excludedPackageVersionsRegex,
             true,
             true,
-            new List<string>());
+            new List<string>(),
+            OutputFormat.Text);
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(
