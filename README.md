@@ -74,7 +74,7 @@ To get machine-readable output instead of the report, ask for the JSON format:
 
 `dotnet consolidate -s YourSolution.sln -f json`
 
-stdout then carries a single JSON document and nothing else — progress messages are suppressed rather than moved to stderr, so `dotnet consolidate -f json | ConvertFrom-Json` works and CI systems that treat any stderr output as a failure stay happy. Anything the tool would have reported along the way (a project that couldn't be parsed, a condition it couldn't evaluate) is carried in `warnings`. Exit codes are the same as for the text format.
+stdout then carries a single JSON document and nothing else — progress messages are suppressed rather than moved to stderr, so `dotnet consolidate -f json | ConvertFrom-Json` works and CI systems that treat any stderr output as a failure stay happy. The one thing ever written to stderr is the parser's complaint about a command line it couldn't parse, and that run fails on its exit code anyway. Anything the tool would have reported along the way (a project that couldn't be parsed, a condition it couldn't evaluate) is carried in `warnings`. Exit codes are the same as for the text format.
 
 ```json
 {
