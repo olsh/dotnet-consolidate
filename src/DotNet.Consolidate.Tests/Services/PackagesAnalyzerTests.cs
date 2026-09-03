@@ -376,6 +376,36 @@ public class PackagesAnalyzerTests
     }
 
     [Fact]
+    public void A_package_removed_and_then_declared_by_the_project_is_still_an_override()
+    {
+        // Dropping the inherited package and declaring your own is the NU1504-free way to override a central
+        // version, and it is still the project refusing to follow the props file -- which is what the report
+        // is for. Only a bare Remove, where nothing takes the package's place, goes unreported.
+        var projectInfos = new List<ProjectInfo>
+        {
+            new ProjectInfo(
+                "ProjectB",
+                "ProjectB",
+                new List<NuGetPackageInfo>
+                {
+                    new NuGetPackageInfo("Serilog", new Version("1.0.0"), NuGetPackageReferenceType.Direct),
+                    new NuGetPackageInfo("Serilog", new Version("3.0.1"), NuGetPackageReferenceType.Inherited)
+                },
+                new List<PackageVersionUpdate>(),
+                new List<string> { "Serilog" })
+            {
+                DirectoryBuildPropsFile = PropsFile
+            }
+        };
+
+        var propsOverride = Assert.Single(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(projectInfos, new Options()));
+
+        Assert.Equal("1.0.0", propsOverride.ProjectVersion.OriginalValue);
+        Assert.Equal("3.0.1", propsOverride.DirectoryBuildPropsVersion.OriginalValue);
+    }
+
+    [Fact]
     public void A_removed_package_is_not_an_override()
     {
         var projectInfos = new List<ProjectInfo> { CreateInheritingProject(removedPackageId: "Serilog") };
