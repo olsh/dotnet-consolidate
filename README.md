@@ -16,7 +16,11 @@ The tool finds such discrepancies.
 
 `dotnet tool install dotnet-consolidate --global`
 
-Requires the .NET 8 runtime or newer.
+The tool targets `net8.0` and rolls forward across major versions, so a single installed runtime of **.NET 8 or newer** (.NET 8, 9, 10, …) is enough.
+
+The version of .NET your solution's projects target does not matter — the tool reads project files directly and never builds them.
+
+> **Upgrading from 4.2.0 or earlier?** Those versions have no roll-forward policy and need the .NET 8 runtime specifically. If you see `You must install .NET to run this application` / `framework 'Microsoft.NETCore.App', version '8.0.0' was not found`, run `dotnet tool update dotnet-consolidate --global` to get 5.0.0 or later.
 
 ## Usage
 
