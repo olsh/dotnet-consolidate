@@ -31,25 +31,6 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <summary>
-        /// Analyzes every given solution as one set, so a package referenced at different versions by projects in
-        /// different solutions is reported — which is the whole point of <c>-c</c>, since neither solution
-        /// disagrees with itself.
-        /// </summary>
-        public static SolutionAnalysisResult AnalyzeAcrossSolutions(
-            IReadOnlyCollection<SolutionInfo> solutionInfos,
-            Options options)
-        {
-            return Analyze(
-                solutionInfos.Select(solutionInfo => solutionInfo.SolutionFile)
-                    .ToList(),
-
-                // One solution that wouldn't parse leaves the pool as incomplete as it leaves its own report.
-                solutionInfos.All(solutionInfo => solutionInfo.IsParsedWithoutIssues),
-                PoolProjects(solutionInfos.Select(solutionInfo => solutionInfo.ProjectInfos)),
-                options);
-        }
-
-        /// <summary>
         /// The analysis itself, over projects that have already been gathered.
         /// </summary>
         /// <remarks>
@@ -90,6 +71,25 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <summary>
+        /// Analyzes every given solution as one set, so a package referenced at different versions by projects in
+        /// different solutions is reported — which is the whole point of <c>-c</c>, since neither solution
+        /// disagrees with itself.
+        /// </summary>
+        public static SolutionAnalysisResult AnalyzeAcrossSolutions(
+            IReadOnlyCollection<SolutionInfo> solutionInfos,
+            Options options)
+        {
+            return Analyze(
+                solutionInfos.Select(solutionInfo => solutionInfo.SolutionFile)
+                    .ToList(),
+
+                // One solution that wouldn't parse leaves the pool as incomplete as it leaves its own report.
+                solutionInfos.All(solutionInfo => solutionInfo.IsParsedWithoutIssues),
+                PoolProjects(solutionInfos.Select(solutionInfo => solutionInfo.ProjectInfos)),
+                options);
+        }
+
+        /// <summary>
         /// Gathers the projects of several solutions into one list, keeping a project that belongs to more than
         /// one of them only once.
         /// </summary>
@@ -110,26 +110,26 @@ namespace DotNet.Consolidate.Services
         /// merging those would drop references that are really there.
         /// </para>
         /// <para>
-        /// Order is preserved rather than grouped away: the consolidation report names a package by the casing
-        /// of the first project that references it, so a stable order keeps the output reproducible.
+        /// Paths are compared the way <see cref="PathUtils"/> compares them, ordinally and case-insensitively on
+        /// every platform, and the cost is the same one recorded there: on a case-sensitive file system two
+        /// projects whose paths differ only in casing are taken for one, and the second is left out of the pool.
+        /// Comparing case-sensitively there would trade that for the failure this method exists to prevent — the
+        /// casing a project is written with is the solution file's to choose, and two solutions naming the same
+        /// shared file differently would stop being recognised as one project. Whichever way it is decided it
+        /// belongs to <see cref="PathUtils"/>, for every path comparison at once, not to this method alone.
+        /// </para>
+        /// <para>
+        /// <see cref="Enumerable.DistinctBy{TSource,TKey}(IEnumerable{TSource},Func{TSource,TKey},IEqualityComparer{TKey})"/>
+        /// keeps the first of each identity in encounter order, which is both halves of what is needed: the first
+        /// solution on the command line wins, and the consolidation report names a package by the casing of the
+        /// first project that references it, so the output stays reproducible.
         /// </para>
         /// </remarks>
         public static List<ProjectInfo> PoolProjects(IEnumerable<ICollection<ProjectInfo>> projectInfos)
         {
-            var pooledProjects = new List<ProjectInfo>();
-
-            // Ordinal and case-insensitive, matching how PathUtils compares paths.
-            var seenProjects = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var projectInfo in projectInfos.SelectMany(projects => projects))
-            {
-                if (seenProjects.Add(GetProjectIdentity(projectInfo)))
-                {
-                    pooledProjects.Add(projectInfo);
-                }
-            }
-
-            return pooledProjects;
+            return projectInfos.SelectMany(projects => projects)
+                .DistinctBy(GetProjectIdentity, StringComparer.OrdinalIgnoreCase)
+                .ToList();
         }
 
         /// <remarks>

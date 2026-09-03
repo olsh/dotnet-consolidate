@@ -113,30 +113,44 @@ namespace DotNet.Consolidate
 
             var solutionsInfo = solutionInfoProvider.GetSolutionsInfo(solutions);
 
-            if (options.CrossSolution)
-            {
-                foreach (var solutionInfo in solutionsInfo)
-                {
-                    ReportParsing(solutionInfo, logger);
-                }
+            Report(solutionsInfo, options, logger, outputWriter);
 
-                // With nothing to pool there is nothing to report on, and "No solution files were found" has
-                // already been logged. A report naming no solution at all would only be confusing.
-                if (solutionsInfo.Count > 0)
-                {
-                    WriteResult(SolutionAnalyzer.AnalyzeAcrossSolutions(solutionsInfo, options), outputWriter);
-                }
-            }
-            else
+            outputWriter.Flush();
+        }
+
+        /// <remarks>
+        /// The two modes keep their own loops rather than sharing one: without <c>-c</c> the text report is
+        /// streamed per solution, so each `Analyzing packages in …` line has to stay in front of the report it
+        /// introduces.
+        /// </remarks>
+        private static void Report(
+            IReadOnlyCollection<SolutionInfo> solutionsInfo,
+            Options options,
+            ILogger logger,
+            IOutputWriter outputWriter)
+        {
+            if (!options.CrossSolution)
             {
                 foreach (var solutionInfo in solutionsInfo)
                 {
                     ReportParsing(solutionInfo, logger);
                     WriteResult(SolutionAnalyzer.Analyze(solutionInfo, options), outputWriter);
                 }
+
+                return;
             }
 
-            outputWriter.Flush();
+            foreach (var solutionInfo in solutionsInfo)
+            {
+                ReportParsing(solutionInfo, logger);
+            }
+
+            // With nothing to pool there is nothing to report on, and "No solution files were found" has
+            // already been logged. A report naming no solution at all would only be confusing.
+            if (solutionsInfo.Count > 0)
+            {
+                WriteResult(SolutionAnalyzer.AnalyzeAcrossSolutions(solutionsInfo, options), outputWriter);
+            }
         }
 
         private static void ReportParsing(SolutionInfo solutionInfo, ILogger logger)
