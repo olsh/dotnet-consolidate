@@ -58,6 +58,12 @@ It's also possible to skip a pattern of versions during consolidation with a reg
 
 With this, if e.g one of the projects in the solution uses `MyPackage` v1.0.0, and another project `MyPackage` v1.1.0-alpha, then no discrepancy will be indicated.
 
+`Directory.Build.props` files are taken into account by default — the packages one declares count as references of every project underneath it. To compare the project files alone, turn that off with `-d false` (or `--directoryBuildProps false`):
+
+`dotnet consolidate -s YourSolution.sln -d false`
+
+Give the option a value rather than writing a bare `-d`; on its own it reads whatever follows it as its value.
+
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies.
 
 A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.

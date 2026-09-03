@@ -11,6 +11,13 @@ namespace DotNet.Consolidate.Models
     /// CommandLineParser fills the properties one at a time, so adding an option doesn't ripple through every
     /// place that builds an <see cref="Options"/>. The C# initializers repeat the <c>Default</c> values from the
     /// attributes, so an instance built in code behaves like one built from a command line.
+    /// <para>
+    /// A <c>bool</c> property is a switch to CommandLineParser and can never be given a value, which is why the
+    /// toggles below are declared <c>bool?</c>: that makes them scalars, and a scalar is what lets <c>-d false</c>
+    /// turn one off. Declaring either as a plain <c>bool</c> silently turns it back into a switch that can only
+    /// ever be on. The nullability is that mechanism and nothing more — <c>Default</c> still supplies <c>true</c>
+    /// when the option is omitted, so the value is never actually <c>null</c>.
+    /// </para>
     /// </remarks>
     public class Options
     {
@@ -39,16 +46,16 @@ namespace DotNet.Consolidate.Models
             "directoryBuildProps",
             Required = false,
             Default = true,
-            HelpText = "Take Directory.Build.props files into account")]
-        public bool ReadDirectoryBuildProps { get; init; } = true;
+            HelpText = "Take Directory.Build.props files into account, e.g. -d false to ignore them")]
+        public bool? ReadDirectoryBuildProps { get; init; } = true;
 
         [Option(
             'o',
             "reportOverridenDirectoryBuildProps",
             Required = false,
             Default = true,
-            HelpText = "Report when csproj overrides a Directory.Build.props")]
-        public bool ReportOverridenDirectoryBuildProps { get; init; } = true;
+            HelpText = "Report when csproj overrides a Directory.Build.props, e.g. -o false to skip the report")]
+        public bool? ReportOverridenDirectoryBuildProps { get; init; } = true;
 
         [Option(
             "property",
