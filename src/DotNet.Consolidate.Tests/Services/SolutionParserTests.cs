@@ -251,11 +251,18 @@ namespace DotNet.Consolidate.Tests.Services
                 .FirstOrDefault(p => p.ProjectName.Equals("IntegrationTests"));
 
             Assert.NotNull(integrationTests);
-            Assert.Equal(
-                2,
-                integrationTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
-            Assert.Contains(integrationTests.Packages, p => p.Id == "Serilog");
-            Assert.DoesNotContain(integrationTests.Packages, p => p.Id == "NUnit");
+
+            // Pinned as an exact id-and-version set rather than a count and a couple of ids: the versions
+            // are what the defect got wrong, and a project handed the wrong props file still ends up with a
+            // plausible-looking package list. Counting ids only holds while the two props files declare
+            // disjoint packages, which is not something this test should depend on.
+            var inheritedPackages = integrationTests.Packages
+                .Where(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited)
+                .Select(p => $"{p.Id} {p.Version.OriginalValue}")
+                .OrderBy(p => p)
+                .ToList();
+
+            Assert.Equal(new[] { "CommandLineParser 2.7.82", "Serilog 3.0.1" }, inheritedPackages);
         }
 
         private static string TestSolutionFileName(string solutionFileName) =>
