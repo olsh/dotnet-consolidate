@@ -39,7 +39,7 @@ SonarCloud runs as server-side Automatic Analysis via the GitHub app — there i
 
 - `TreatWarningsAsErrors` is on for `src/DotNet.Consolidate`, and StyleCop.Analyzers runs on both projects. `.editorconfig` disables a specific set of SA rules (SA1101, SA1200, SA1309, SA1413, SA1600, SA1602, SA1633, SA0001) — everything else is enforced, including `dotnet_separate_import_directive_groups` (blank line between `System.*`, third-party, and project using groups).
 - `Nullable` is enabled in the main project. Nullability is expressed deliberately (e.g. `SolutionInfo.Solution` is nullable to signal a parse failure).
-- The tool multi-targets `net6.0;net7.0;net8.0`; the test project is `net8.0` only.
+- The tool targets `net8.0` (with `<RollForward>Major</RollForward>` so it also runs on newer runtimes) because `Microsoft.VisualStudio.SolutionPersistence` ships only `net472` and `net8.0` assemblies; the test project is `net8.0` too.
 - Bumping the released version means editing `<VersionPrefix>` in `src/DotNet.Consolidate/DotNet.Consolidate.csproj`; it is what the packed `.nupkg` is named after.
 
 ## Architecture
@@ -47,7 +47,7 @@ SonarCloud runs as server-side Automatic Analysis via the GitHub app — there i
 Everything is instantiated by hand in `Program.cs` — no DI container. The pipeline is:
 
 1. **`Options`** (`Models/Options.cs`) — CommandLineParser attributes. Adding a CLI flag means adding a constructor parameter here; the constructor is called positionally by every test, so new options ripple through the test files.
-2. **`SolutionInfoProvider`** — parses the `.sln` via `Onion.SolutionParser`, skips solution-folder entries (`ProjectTypeGuids.SolutionFolder`), and for each project reads `packages.config` if present, otherwise the project file. Parse failures are logged and swallowed per-project so one bad project doesn't abort the run; the discrepancy surfaces as `SolutionInfo.IsParsedWithoutIssues == false` (project count mismatch).
+2. **`SolutionInfoProvider`** — parses `.sln` and `.slnx` via `Microsoft.VisualStudio.SolutionPersistence` (`SolutionSerializers.GetSerializerByMoniker` picks the serializer by extension; `OpenAsync` is blocked on with `GetAwaiter().GetResult()` since the library offers no sync overload). `SolutionModel.SolutionProjects` already excludes solution folders — they live in `SolutionFolders` — so there is no type-GUID filtering. For each project it reads `packages.config` if present, otherwise the project file. Parse failures are logged and swallowed per-project so one bad project doesn't abort the run; the discrepancy surfaces as `SolutionInfo.IsParsedWithoutIssues == false` (project count mismatch).
 3. **`ProjectParser`** — XML parsing only, no MSBuild evaluation. It matches `PackageReference` by `LocalName` (namespace-agnostic) and accepts the version as either an attribute or a child element. It does **not** resolve MSBuild properties, `Import`s, or `Central Package Management`.
 4. **`ApplyInheritedPackages`** (in `SolutionInfoProvider`) — `Directory.Build.props` files are discovered by recursive directory walk from the solution folder, then each project is matched to the *longest matching directory prefix* (nearest ancestor). Those packages are appended to the project as `NuGetPackageReferenceType.Inherited`. Chained `Directory.Build.props` (via `Import`) is explicitly unsupported.
 5. **`PackagesAnalyzer`** — groups by package ID, keeps groups with more than one distinct version, then applies the `-p` / `-e` / `--excludedVersionsRegex` filters in that order.
@@ -59,7 +59,7 @@ Everything is instantiated by hand in `Program.cs` — no DI container. The pipe
 
 ### Path handling
 
-Solution files store project paths with `\`. `PathUtils.EnsureSystemSeparator` normalizes them; use it for any path read out of a `.sln` so the tool keeps working on Linux/macOS.
+Solution files store project paths with `\` (`.sln`) or `/` (`.slnx`). `PathUtils.EnsureSystemSeparator` normalizes either one; use it for any path read out of a solution file so the tool keeps working on Linux/macOS.
 
 ## Tests
 

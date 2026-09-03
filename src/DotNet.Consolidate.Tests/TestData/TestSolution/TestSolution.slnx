@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.build.props" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ProjectA/ProjectA.csproj" />
+    <Project Path="src/ProjectB/ProjectB.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <File Path="tests/Directory.build.props" />
+    <Project Path="tests/ProjectA.Tests/ProjectA.Tests.csproj" />
+    <Project Path="tests/ProjectB.Tests/ProjectB.Tests.csproj" />
+  </Folder>
+</Solution>
