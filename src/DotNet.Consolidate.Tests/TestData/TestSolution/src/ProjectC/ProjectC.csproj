@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!--
+      The idiomatic way to override a version the solution's Directory.build.props declares. Re-declaring it
+      with Include instead would be a duplicate item, which NuGet flags as NU1504.
+    -->
+    <PackageReference Update="Serilog" Version="4.0.0" />
+  </ItemGroup>
+
+</Project>

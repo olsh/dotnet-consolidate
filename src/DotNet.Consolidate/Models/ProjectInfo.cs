@@ -1,17 +1,60 @@
+using System;
 using System.Collections.Generic;
 
 namespace DotNet.Consolidate.Models
 {
     public class ProjectInfo
     {
+        /// <summary>
+        /// A project that changes nothing about the references it inherits — anything read from a
+        /// <c>packages.config</c>, and every project built in a test.
+        /// </summary>
         public ProjectInfo(string projectName, string projectDirectory, ICollection<NuGetPackageInfo> packages)
+            : this(
+                projectName,
+                projectDirectory,
+                packages,
+                Array.Empty<PackageVersionUpdate>(),
+                Array.Empty<string>())
+        {
+        }
+
+        public ProjectInfo(
+            string projectName,
+            string projectDirectory,
+            ICollection<NuGetPackageInfo> packages,
+            IReadOnlyCollection<PackageVersionUpdate> packageUpdates,
+            IReadOnlyCollection<string> removedPackageIds)
         {
             ProjectName = projectName;
             ProjectDirectory = projectDirectory;
             Packages = packages;
+            PackageUpdates = packageUpdates;
+            RemovedPackageIds = removedPackageIds;
         }
 
+        /// <summary>
+        /// Gets the package references, exactly as they were parsed: the project's own, plus the ones appended
+        /// from its <c>Directory.Build.props</c> at the version that file declares.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately raw. <see cref="PackageUpdates"/> and <see cref="RemovedPackageIds"/> are not applied
+        /// here — <see cref="Services.PackagesAnalyzer.GetEffectivePackages"/> does that — because the
+        /// <c>-o</c> report has to name the version the props file declares next to the one that replaced it,
+        /// and there is nowhere else to recover it from once it has been overwritten.
+        /// </remarks>
         public ICollection<NuGetPackageInfo> Packages { get; }
+
+        /// <summary>
+        /// Gets the versions the project file sets on references it does not declare itself, through
+        /// <c>&lt;PackageReference Update="…" Version="…" /&gt;</c>.
+        /// </summary>
+        public IReadOnlyCollection<PackageVersionUpdate> PackageUpdates { get; }
+
+        /// <summary>
+        /// Gets the package IDs the project file drops through <c>&lt;PackageReference Remove="…" /&gt;</c>.
+        /// </summary>
+        public IReadOnlyCollection<string> RemovedPackageIds { get; }
 
         public string ProjectName { get; }
 
