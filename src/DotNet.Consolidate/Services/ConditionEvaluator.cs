@@ -468,11 +468,16 @@ namespace DotNet.Consolidate.Services
                 }
 
                 _position++;
-                if (Current.Type != TokenType.LeftParenthesis)
-                {
-                    return Expand(token.Text);
-                }
 
+                return Current.Type == TokenType.LeftParenthesis ? ParseFunctionCall(token.Text) : Expand(token.Text);
+            }
+
+            /// <summary>
+            /// Reads the argument list of a supported function and returns <c>true</c>/<c>false</c> as text, so that
+            /// the call can be used both as a standalone boolean and as one side of a comparison.
+            /// </summary>
+            private string? ParseFunctionCall(string functionName)
+            {
                 _position++;
                 var argument = ParseOperand();
                 if (argument == null || !Consume(TokenType.RightParenthesis))
@@ -480,14 +485,18 @@ namespace DotNet.Consolidate.Services
                     return null;
                 }
 
-                if (string.Equals(token.Text, ExistsFunctionName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(functionName, ExistsFunctionName, StringComparison.OrdinalIgnoreCase))
                 {
                     var exists = Exists(argument);
+                    if (exists == null)
+                    {
+                        return null;
+                    }
 
-                    return exists == null ? null : exists.Value ? TrueText : FalseText;
+                    return exists.Value ? TrueText : FalseText;
                 }
 
-                if (string.Equals(token.Text, HasTrailingSlashFunctionName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(functionName, HasTrailingSlashFunctionName, StringComparison.OrdinalIgnoreCase))
                 {
                     return argument.EndsWith('/') || argument.EndsWith('\\') ? TrueText : FalseText;
                 }
