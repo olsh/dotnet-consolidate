@@ -1,6 +1,6 @@
 # dotnet consolidate
 
-[![Build status](https://ci.appveyor.com/api/projects/status/k8hwnc4d6d897vc8?svg=true)](https://ci.appveyor.com/project/olsh/dotnet-consolidate)
+[![Build](https://github.com/olsh/dotnet-consolidate/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/olsh/dotnet-consolidate/actions/workflows/build.yml)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=dotnet-consolidate&metric=alert_status)](https://sonarcloud.io/dashboard?id=dotnet-consolidate)
 [![NuGet](https://img.shields.io/nuget/v/dotnet-consolidate.svg)](https://www.nuget.org/packages/dotnet-consolidate/)
 
