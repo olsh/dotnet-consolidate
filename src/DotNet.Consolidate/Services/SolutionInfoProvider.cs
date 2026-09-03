@@ -2,12 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
-using DotNet.Consolidate.Constants;
 using DotNet.Consolidate.Models;
 
-using Onion.SolutionParser.Parser;
-using Onion.SolutionParser.Parser.Model;
+using Microsoft.VisualStudio.SolutionPersistence.Model;
+using Microsoft.VisualStudio.SolutionPersistence.Serializer;
 
 namespace DotNet.Consolidate.Services
 {
@@ -82,9 +82,9 @@ namespace DotNet.Consolidate.Services
             }
         }
 
-        private (bool isSuccessParsing, ISolution? solution) TryGetSolutionInfo(string filePath)
+        private (bool isSuccessParsing, SolutionModel? solution) TryGetSolutionInfo(string filePath)
         {
-            ISolution? solution;
+            SolutionModel solution;
             try
             {
                 filePath = PathUtils.EnsureSystemSeparator(filePath);
@@ -103,7 +103,15 @@ namespace DotNet.Consolidate.Services
                     return (false, null);
                 }
 
-                solution = SolutionParser.Parse(filePath);
+                var serializer = SolutionSerializers.GetSerializerByMoniker(filePath);
+                if (serializer == null)
+                {
+                    _logger.Message($"Unsupported solution file format {filePath}");
+
+                    return (false, null);
+                }
+
+                solution = serializer.OpenAsync(filePath, CancellationToken.None).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
@@ -116,7 +124,7 @@ namespace DotNet.Consolidate.Services
         }
 
         // ReSharper disable once CognitiveComplexity
-        private List<ProjectInfo> TryGetProjectsInfo(string filePath, ISolution solution)
+        private List<ProjectInfo> TryGetProjectsInfo(string filePath, SolutionModel solution)
         {
             var projectInfos = new List<ProjectInfo>();
 
@@ -128,22 +136,17 @@ namespace DotNet.Consolidate.Services
                 return projectInfos;
             }
 
-            foreach (var project in solution.Projects)
+            foreach (var project in solution.SolutionProjects)
             {
                 try
                 {
-                    if (project.TypeGuid == ProjectTypeGuids.SolutionFolder)
-                    {
-                        continue;
-                    }
-
-                    // Solution files use the windows path separator '\' by default,
+                    // Solution files store project paths with '\' (.sln) or '/' (.slnx),
                     // so we must convert to system path separator to work on posix systems.
-                    var projectFilePath = PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.Path));
+                    var projectFilePath = PathUtils.EnsureSystemSeparator(Path.Combine(solutionDirectory, project.FilePath));
                     var projectDirectory = Path.GetDirectoryName(projectFilePath);
                     if (projectDirectory == null)
                     {
-                        _logger.Message($"Project directory wasn't found for project {project.Name}");
+                        _logger.Message($"Project directory wasn't found for project {project.ActualDisplayName}");
 
                         return projectInfos;
                     }
@@ -153,22 +156,22 @@ namespace DotNet.Consolidate.Services
                     if (File.Exists(packageConfigPath))
                     {
                         var packages = _projectParser.ParsePackageConfig(packageConfigPath);
-                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, packages));
+                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, packages));
                     }
                     else if (File.Exists(projectFilePath))
                     {
                         var packages = _projectParser.ParseProjectFile(projectFilePath);
-                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, packages));
+                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, packages));
                     }
                     else
                     {
-                        projectInfos.Add(new ProjectInfo(project.Name, projectDirectory, new List<NuGetPackageInfo>()));
-                        _logger.Message($"Unable to find package.config file for project {project.Path}");
+                        projectInfos.Add(new ProjectInfo(project.ActualDisplayName, projectDirectory, new List<NuGetPackageInfo>()));
+                        _logger.Message($"Unable to find package.config file for project {project.FilePath}");
                     }
                 }
                 catch (Exception e)
                 {
-                    _logger.Message($"Unable to get project info for {project.Path}\r\n {e}");
+                    _logger.Message($"Unable to get project info for {project.FilePath}\r\n {e}");
                 }
             }
 

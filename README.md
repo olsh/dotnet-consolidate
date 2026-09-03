@@ -16,15 +16,23 @@ The tool finds such discrepancies.
 
 `dotnet tool install dotnet-consolidate --global`
 
+Requires the .NET 8 runtime or newer.
+
 ## Usage
 
 Pass a solution file as a parameter
 
 `dotnet consolidate -s YourSolution.sln`
 
+Both the classic `.sln` format and the XML `.slnx` format are supported
+
+`dotnet consolidate -s YourSolution.slnx`
+
 or multiple solutions
 
 `dotnet consolidate -s YourSolution.sln AnotherSolution.sln`
+
+If no solution is specified, every `.sln` and `.slnx` file in the working directory is analyzed.
 
 You can also optionally specify the a package ID if you want only a single package to be consolidated
 

@@ -15,15 +15,15 @@ namespace DotNet.Consolidate.Tests.Services
     {
         private static string TestSolutionDirectoryName => Path.Join(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "TestData", "TestSolution");
 
-        private static string TestSolutionFileName => Path.Join(TestSolutionDirectoryName, "TestSolution.sln");
-
-        [Fact]
-        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_allowed_to_read_them()
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_allowed_to_read_them(string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
 
-            var solutions = new[] { TestSolutionFileName };
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
 
             // Act
             var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
@@ -31,16 +31,19 @@ namespace DotNet.Consolidate.Tests.Services
 
             // Assert
             Assert.NotNull(solution);
+            Assert.True(solution.IsParsedWithoutIssues);
             Assert.Equal(2, solution.DirectoryBuildPropsInfos.Count);
         }
 
-        [Fact]
-        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_not_allowed_to_read_them()
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_not_allowed_to_read_them(string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
 
-            var solutions = new[] { TestSolutionFileName };
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
 
             // Act
             var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
@@ -51,13 +54,15 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Empty(solution.DirectoryBuildPropsInfos);
         }
 
-        [Fact]
-        public void Solution_with_DirectoryBuildProps_when_allowed_to_read_them_determines_project_references_correctly()
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_with_DirectoryBuildProps_when_allowed_to_read_them_determines_project_references_correctly(string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
 
-            var solutions = new[] { TestSolutionFileName };
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
 
             // Act
             var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
@@ -90,13 +95,15 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Equal(7, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
         }
 
-        [Fact]
-        public void Solution_with_DirectoryBuildProps_when_not_allowed_to_read_them_determines_project_references_correctly()
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_with_DirectoryBuildProps_when_not_allowed_to_read_them_determines_project_references_correctly(string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
 
-            var solutions = new[] { TestSolutionFileName };
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
 
             // Act
             var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
@@ -128,5 +135,7 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
             Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
         }
+
+        private static string TestSolutionFileName(string solutionFileName) => Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
 }

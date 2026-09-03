@@ -49,10 +49,13 @@ namespace DotNet.Consolidate
             }
             else
             {
-                solutions = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.sln", SearchOption.TopDirectoryOnly);
+                var currentDirectory = Directory.GetCurrentDirectory();
+                solutions = Directory.GetFiles(currentDirectory, "*.sln", SearchOption.TopDirectoryOnly)
+                    .Concat(Directory.GetFiles(currentDirectory, "*.slnx", SearchOption.TopDirectoryOnly))
+                    .ToList();
                 if (!solutions.Any())
                 {
-                    logger.Message($"No solution files were found in {Directory.GetCurrentDirectory()}");
+                    logger.Message($"No solution files were found in {currentDirectory}");
                 }
             }
 
