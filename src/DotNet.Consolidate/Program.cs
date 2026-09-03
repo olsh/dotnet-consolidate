@@ -49,14 +49,7 @@ namespace DotNet.Consolidate
 
         private static void Main(string[] args)
         {
-            // CaseInsensitiveEnumValues lets `-f json` work and not just `-f Json`.
-            // HelpWriter has to be set explicitly: Parser.Default points it at Console.Error, while the
-            // ParserSettings constructor leaves it null, which silently turns --help and --version into no-ops.
-            using var parser = new Parser(settings =>
-            {
-                settings.CaseInsensitiveEnumValues = true;
-                settings.HelpWriter = Console.Error;
-            });
+            using var parser = CommandLineParserFactory.Create();
 
             parser.ParseArguments<Options>(args)
                 .WithParsed(Consolidate)
