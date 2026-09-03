@@ -26,10 +26,7 @@
       "enum": [
         "Compile",
         "NugetPack",
-        "Sonar",
-        "SonarBegin",
-        "Test",
-        "UpdateBuildVersion"
+        "Test"
       ]
     },
     "Verbosity": {
@@ -114,10 +111,6 @@
         "Solution": {
           "type": "string",
           "description": "Path to a solution file that is automatically loaded"
-        },
-        "sonar:apikey": {
-          "type": "string",
-          "description": "SonarQube API key"
         }
       }
     },

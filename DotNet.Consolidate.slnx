@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
-    <File Path="appveyor.yml" />
+    <File Path=".github/dependabot.yml" />
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/dependabot-auto-merge.yml" />
     <File Path="build.cmd" />
     <File Path="build.ps1" />
     <File Path="build.sh" />
