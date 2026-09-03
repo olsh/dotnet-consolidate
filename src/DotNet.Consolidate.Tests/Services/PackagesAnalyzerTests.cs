@@ -14,13 +14,23 @@ public class PackagesAnalyzerTests
     {
         // This case may happen when you have mixed project types in your solution
         var analyzer = new PackagesAnalyzer();
-        var info = new ProjectInfo("Test", "Test", new List<NuGetPackageInfo>
-        {
-            new ("myid", new Version("1.0.1"), NuGetPackageReferenceType.Direct),
-            new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
-        });
+        var info = new ProjectInfo(
+            "Test",
+            "Test",
+            new List<NuGetPackageInfo>
+            {
+                new NuGetPackageInfo("myid", new Version("1.0.1"), NuGetPackageReferenceType.Direct),
+                new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
+            });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true);
+        var options = new Options(
+            new List<string>(),
+            new List<string>(),
+            new List<string>(),
+            string.Empty,
+            true,
+            true,
+            new List<string>());
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.False(analysisResult.ContainsDifferentPackagesVersions));
@@ -30,13 +40,23 @@ public class PackagesAnalyzerTests
     public void Packages_with_different_versions_are_not_consolidated()
     {
         var analyzer = new PackagesAnalyzer();
-        var info = new ProjectInfo("Test", "Test", new List<NuGetPackageInfo>()
-        {
-            new ("myid", new Version("1.1.0"), NuGetPackageReferenceType.Direct),
-            new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
-        });
+        var info = new ProjectInfo(
+            "Test",
+            "Test",
+            new List<NuGetPackageInfo>()
+            {
+                new NuGetPackageInfo("myid", new Version("1.1.0"), NuGetPackageReferenceType.Direct),
+                new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
+            });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), string.Empty, true, true);
+        var options = new Options(
+            new List<string>(),
+            new List<string>(),
+            new List<string>(),
+            string.Empty,
+            true,
+            true,
+            new List<string>());
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
         Assert.All(result, analysisResult => Assert.True(analysisResult.ContainsDifferentPackagesVersions));
@@ -49,15 +69,27 @@ public class PackagesAnalyzerTests
     public void Packages_version_exclude_regex_correctly_matches(string excludedPackageVersionsRegex, bool shouldMatch)
     {
         var analyzer = new PackagesAnalyzer();
-        var info = new ProjectInfo("Test", "Test", new List<NuGetPackageInfo>()
-        {
-            new ("myid", new Version("1.1.0-alpha"), NuGetPackageReferenceType.Direct),
-            new ("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
-        });
+        var info = new ProjectInfo(
+            "Test",
+            "Test",
+            new List<NuGetPackageInfo>()
+            {
+                new NuGetPackageInfo("myid", new Version("1.1.0-alpha"), NuGetPackageReferenceType.Direct),
+                new NuGetPackageInfo("myid", new Version("1.0.1.0"), NuGetPackageReferenceType.Direct)
+            });
         var projectInfos = new List<ProjectInfo> { info };
-        var options = new Options(new List<string>(), new List<string>(), new List<string>(), excludedPackageVersionsRegex, true, true);
+        var options = new Options(
+            new List<string>(),
+            new List<string>(),
+            new List<string>(),
+            excludedPackageVersionsRegex,
+            true,
+            true,
+            new List<string>());
         var result = analyzer.FindNonConsolidatedPackages(projectInfos, options);
 
-        Assert.All(result, analysisResult => Assert.NotEqual(shouldMatch, analysisResult.ContainsDifferentPackagesVersions));
+        Assert.All(
+            result,
+            analysisResult => Assert.NotEqual(shouldMatch, analysisResult.ContainsDifferentPackagesVersions));
     }
 }

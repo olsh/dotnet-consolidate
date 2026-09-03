@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -13,12 +14,18 @@ namespace DotNet.Consolidate.Tests.Services
 {
     public class SolutionParserTests
     {
-        private static string TestSolutionDirectoryName => Path.Join(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "TestData", "TestSolution");
+        private static string TestSolutionDirectoryName => Path.Join(
+            new FileInfo(
+                Assembly.GetExecutingAssembly()
+                    .Location).DirectoryName,
+            "TestData",
+            "TestSolution");
 
         [Theory]
         [InlineData("TestSolution.sln")]
         [InlineData("TestSolution.slnx")]
-        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_allowed_to_read_them(string solutionFileName)
+        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_allowed_to_read_them(
+            string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
@@ -38,7 +45,8 @@ namespace DotNet.Consolidate.Tests.Services
         [Theory]
         [InlineData("TestSolution.sln")]
         [InlineData("TestSolution.slnx")]
-        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_not_allowed_to_read_them(string solutionFileName)
+        public void Solution_with_DirectoryBuildProps_parsed_correctly_when_not_allowed_to_read_them(
+            string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
@@ -57,7 +65,8 @@ namespace DotNet.Consolidate.Tests.Services
         [Theory]
         [InlineData("TestSolution.sln")]
         [InlineData("TestSolution.slnx")]
-        public void Solution_with_DirectoryBuildProps_when_allowed_to_read_them_determines_project_references_correctly(string solutionFileName)
+        public void Solution_with_DirectoryBuildProps_when_allowed_to_read_them_determines_project_references_correctly(
+            string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), true);
@@ -77,28 +86,42 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.NotNull(projectA);
             Assert.Equal(2, projectA.Packages.Count);
             Assert.Equal(0, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(2, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                2,
+                projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectB);
             Assert.Equal(3, projectB.Packages.Count);
             Assert.Equal(1, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(2, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                2,
+                projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectATests);
             Assert.Equal(7, projectATests.Packages.Count);
-            Assert.Equal(0, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(7, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
+            Assert.Equal(
+                7,
+                projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectBTests);
             Assert.Equal(7, projectBTests.Packages.Count);
-            Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(7, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
+            Assert.Equal(
+                7,
+                projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
         }
 
         [Theory]
         [InlineData("TestSolution.sln")]
         [InlineData("TestSolution.slnx")]
-        public void Solution_with_DirectoryBuildProps_when_not_allowed_to_read_them_determines_project_references_correctly(string solutionFileName)
+        public void
+            Solution_with_DirectoryBuildProps_when_not_allowed_to_read_them_determines_project_references_correctly(
+                string solutionFileName)
         {
             var projectParser = new ProjectParser(new Logger());
             var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
@@ -118,24 +141,63 @@ namespace DotNet.Consolidate.Tests.Services
             Assert.NotNull(projectA);
             Assert.Empty(projectA.Packages);
             Assert.Equal(0, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(0, projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectA.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectB);
             Assert.Single(projectB.Packages);
             Assert.Equal(1, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(0, projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectB.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectATests);
             Assert.Empty(projectATests.Packages);
-            Assert.Equal(0, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(0, projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
+            Assert.Equal(
+                0,
+                projectATests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
 
             Assert.NotNull(projectBTests);
             Assert.Empty(projectBTests.Packages);
-            Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
-            Assert.Equal(0, projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
+            Assert.Equal(
+                0,
+                projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Direct));
+            Assert.Equal(
+                0,
+                projectBTests.Packages.Count(p => p.PackageReferenceType == NuGetPackageReferenceType.Inherited));
         }
 
-        private static string TestSolutionFileName(string solutionFileName) => Path.Join(TestSolutionDirectoryName, solutionFileName);
+        [Theory]
+        [InlineData("TestSolution.sln")]
+        [InlineData("TestSolution.slnx")]
+        public void Solution_conditional_package_reference_is_included_when_the_property_is_supplied(
+            string solutionFileName)
+        {
+            var globalProperties = new Dictionary<string, string> { ["NuGetBuild"] = "true" };
+            var projectParser = new ProjectParser(new Logger(), globalProperties);
+            var solutionInfoProvider = new SolutionInfoProvider(projectParser, new Logger(), false);
+
+            var solutions = new[] { TestSolutionFileName(solutionFileName) };
+
+            // Act
+            var solution = solutionInfoProvider.GetSolutionsInfo(solutions)
+                .FirstOrDefault();
+
+            var projectA = solution.ProjectInfos.FirstOrDefault(p => p.ProjectName.Equals("ProjectA"));
+
+            // Assert
+            Assert.NotNull(projectA);
+            Assert.Single(projectA.Packages);
+
+            var package = projectA.Packages.Single();
+            Assert.Equal("Newtonsoft.Json", package.Id);
+        }
+
+        private static string TestSolutionFileName(string solutionFileName) =>
+            Path.Join(TestSolutionDirectoryName, solutionFileName);
     }
 }

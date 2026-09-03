@@ -6,4 +6,9 @@
     <Platforms>x64;x64</Platforms>
   </PropertyGroup>
 
+  <!-- Inactive unless the NuGetBuild property is passed in, so it must not take part in the consolidation check. -->
+  <ItemGroup Condition="'$(NuGetBuild)' == 'true'">
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
 </Project>

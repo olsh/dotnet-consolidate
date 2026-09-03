@@ -12,6 +12,32 @@ namespace DotNet.Consolidate
 {
     internal static class Program
     {
+        private static (bool IsSuccess, Dictionary<string, string> Properties) TryParseGlobalProperties(
+            ICollection<string>? values,
+            ILogger logger)
+        {
+            var properties = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (values == null)
+            {
+                return (true, properties);
+            }
+
+            foreach (var value in values)
+            {
+                var separatorIndex = value.IndexOf('=');
+                if (separatorIndex <= 0)
+                {
+                    logger.Message($"The property `{value}` is not in the expected Name=Value format.");
+
+                    return (false, properties);
+                }
+
+                properties[value.Substring(0, separatorIndex)] = value.Substring(separatorIndex + 1);
+            }
+
+            return (true, properties);
+        }
+
         private static void HandleParseError(IEnumerable<Error> errors)
         {
             Console.WriteLine("The following parsing errors occurred when parsing the solution file");
@@ -40,7 +66,18 @@ namespace DotNet.Consolidate
                 return;
             }
 
-            var solutionInfoProvider = new SolutionInfoProvider(new ProjectParser(logger), logger, options.ReadDirectoryBuildProps);
+            var (isSuccess, globalProperties) = TryParseGlobalProperties(options.GlobalProperties, logger);
+            if (!isSuccess)
+            {
+                Environment.ExitCode = 1;
+
+                return;
+            }
+
+            var solutionInfoProvider = new SolutionInfoProvider(
+                new ProjectParser(logger, globalProperties),
+                logger,
+                options.ReadDirectoryBuildProps);
 
             ICollection<string> solutions;
             if (options.Solutions?.Any() == true)
@@ -68,12 +105,14 @@ namespace DotNet.Consolidate
                 logger.Message($"Analyzing packages in {solutionInfo.SolutionFile}");
                 if (!solutionInfo.IsParsedWithoutIssues)
                 {
-                    logger.Message($"Solution {solutionInfo.SolutionFile} wasn't parsed correctly, the results may be invalid");
+                    logger.Message(
+                        $"Solution {solutionInfo.SolutionFile} wasn't parsed correctly, the results may be invalid");
 
                     Environment.ExitCode = 1;
                 }
 
-                var nonConsolidatedPackages = packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
+                var nonConsolidatedPackages =
+                    packagesAnalyzer.FindNonConsolidatedPackages(solutionInfo.ProjectInfos, options);
                 logger.WriteAnalysisResults(nonConsolidatedPackages, solutionInfo, options);
                 if (nonConsolidatedPackages.Any())
                 {

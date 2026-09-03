@@ -12,11 +12,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      TestData holds sample projects. If a tool ever restores or builds them, the generated obj/**/*.cs would
+      otherwise be swept into this project by the default glob and break the build with duplicate attributes.
+    -->
+    <Compile Remove="TestData\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
@@ -28,6 +32,8 @@
     <EmbeddedResource Include="TestData\Directory.build.props" />
     <EmbeddedResource Include="TestData\PackageReference.csproj" />
     <EmbeddedResource Include="TestData\NetCore.csproj" />
+    <EmbeddedResource Include="TestData\Conditions.csproj" />
+    <EmbeddedResource Include="TestData\MultiTargeting.csproj" />
     <EmbeddedResource Include="TestData\packages.config" />
   </ItemGroup>
 

@@ -6,7 +6,14 @@ namespace DotNet.Consolidate.Models
 {
     public class Options
     {
-        public Options(ICollection<string>? solutions, ICollection<string>? packageIds, ICollection<string>? excludedPackageIds, string excludedPackageVersionsRegex, bool readDirectoryBuildProps, bool reportOverridenDirectoryBuildProps)
+        public Options(
+            ICollection<string>? solutions,
+            ICollection<string>? packageIds,
+            ICollection<string>? excludedPackageIds,
+            string excludedPackageVersionsRegex,
+            bool readDirectoryBuildProps,
+            bool reportOverridenDirectoryBuildProps,
+            ICollection<string>? globalProperties)
         {
             Solutions = solutions;
             PackageIds = packageIds;
@@ -14,9 +21,15 @@ namespace DotNet.Consolidate.Models
             ExcludedPackageVersionsRegex = excludedPackageVersionsRegex;
             ReadDirectoryBuildProps = readDirectoryBuildProps;
             ReportOverridenDirectoryBuildProps = reportOverridenDirectoryBuildProps;
+            GlobalProperties = globalProperties;
         }
 
-        [Option('s', "solutions", Required = false, HelpText = "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
+        [Option(
+            's',
+            "solutions",
+            Required = false,
+            HelpText =
+                "Target solutions for checking. If not specified, all solutions in the working directory will be analyzed.")]
         public ICollection<string>? Solutions { get; }
 
         [Option('p', "packageIds", Required = false, HelpText = "Package IDs for checking.")]
@@ -25,13 +38,33 @@ namespace DotNet.Consolidate.Models
         [Option('e', "excluded", Required = false, HelpText = "Package IDs that will be skipped during checking.")]
         public ICollection<string>? ExcludedPackageIds { get; }
 
-        [Option("excludedVersionsRegex", Required = false, HelpText = "A regular expression to match package versions that will be skipped during checking.")]
+        [Option(
+            "excludedVersionsRegex",
+            Required = false,
+            HelpText = "A regular expression to match package versions that will be skipped during checking.")]
         public string ExcludedPackageVersionsRegex { get; }
 
-        [Option('d', "directoryBuildProps", Required = false, Default = true, HelpText = "Take Directory.Build.props files into account")]
+        [Option(
+            'd',
+            "directoryBuildProps",
+            Required = false,
+            Default = true,
+            HelpText = "Take Directory.Build.props files into account")]
         public bool ReadDirectoryBuildProps { get; }
 
-        [Option('o', "reportOverridenDirectoryBuildProps", Required = false, Default = true, HelpText = "Report when csproj overrides a Directory.Build.props")]
+        [Option(
+            'o',
+            "reportOverridenDirectoryBuildProps",
+            Required = false,
+            Default = true,
+            HelpText = "Report when csproj overrides a Directory.Build.props")]
         public bool ReportOverridenDirectoryBuildProps { get; }
+
+        [Option(
+            "property",
+            Required = false,
+            HelpText =
+                "MSBuild properties in the Name=Value format, used when evaluating the conditions in project files, e.g. --property NuGetBuild=true Configuration=Release")]
+        public ICollection<string>? GlobalProperties { get; }
     }
 }

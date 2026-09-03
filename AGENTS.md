@@ -37,8 +37,8 @@ SonarCloud runs as server-side Automatic Analysis via the GitHub app — there i
 
 ## Constraints that break the build if ignored
 
-- `TreatWarningsAsErrors` is on for `src/DotNet.Consolidate`, and StyleCop.Analyzers runs on both projects. `.editorconfig` disables a specific set of SA rules (SA1101, SA1200, SA1309, SA1413, SA1600, SA1602, SA1633, SA0001) — everything else is enforced, including `dotnet_separate_import_directive_groups` (blank line between `System.*`, third-party, and project using groups).
-- `Nullable` is enabled in the main project. Nullability is expressed deliberately (e.g. `SolutionInfo.Solution` is nullable to signal a parse failure).
+- `TreatWarningsAsErrors` is on for `src/DotNet.Consolidate`, so any compiler warning there fails the build. There is no analyzer package: StyleCop.Analyzers was removed, and `.editorconfig` now only carries formatting preferences (`dotnet_sort_system_directives_first`, `dotnet_separate_import_directive_groups` — a blank line between `System.*`, third-party and project using groups — plus indentation and charset). Those are IDE conventions, not build failures; follow them to match the surrounding code.
+- `Nullable` is enabled in the main project (but **not** in the test project, so `?` annotations in tests warn). Nullability is expressed deliberately (e.g. `SolutionInfo.Solution` is nullable to signal a parse failure).
 - The tool targets `net8.0` (with `<RollForward>Major</RollForward>` so it also runs on newer runtimes) because `Microsoft.VisualStudio.SolutionPersistence` ships only `net472` and `net8.0` assemblies; the test project is `net8.0` too.
 - Bumping the released version means editing `<VersionPrefix>` in `src/DotNet.Consolidate/DotNet.Consolidate.csproj`; it is what the packed `.nupkg` is named after.
 
@@ -46,9 +46,13 @@ SonarCloud runs as server-side Automatic Analysis via the GitHub app — there i
 
 Everything is instantiated by hand in `Program.cs` — no DI container. The pipeline is:
 
-1. **`Options`** (`Models/Options.cs`) — CommandLineParser attributes. Adding a CLI flag means adding a constructor parameter here; the constructor is called positionally by every test, so new options ripple through the test files.
+1. **`Options`** (`Models/Options.cs`) — CommandLineParser attributes. Adding a CLI flag means adding a constructor parameter here; the constructor is called positionally by every test, so new options ripple through the test files. `--property` (`GlobalProperties`) carries `Name=Value` pairs that `Program.cs` parses into the dictionary handed to `ProjectParser`.
 2. **`SolutionInfoProvider`** — parses `.sln` and `.slnx` via `Microsoft.VisualStudio.SolutionPersistence` (`SolutionSerializers.GetSerializerByMoniker` picks the serializer by extension; `OpenAsync` is blocked on with `GetAwaiter().GetResult()` since the library offers no sync overload). `SolutionModel.SolutionProjects` already excludes solution folders — they live in `SolutionFolders` — so there is no type-GUID filtering. For each project it reads `packages.config` if present, otherwise the project file. Parse failures are logged and swallowed per-project so one bad project doesn't abort the run; the discrepancy surfaces as `SolutionInfo.IsParsedWithoutIssues == false` (project count mismatch).
-3. **`ProjectParser`** — XML parsing only, no MSBuild evaluation. It matches `PackageReference` by `LocalName` (namespace-agnostic) and accepts the version as either an attribute or a child element. It does **not** resolve MSBuild properties, `Import`s, or `Central Package Management`.
+3. **`ProjectParser`** — a thin wrapper over **`ProjectEvaluator`**, which does the XML walking. Still no MSBuild engine: `ProjectEvaluator` collects `<PropertyGroup>` values in document order, then walks the top-level `<ItemGroup>`s, evaluating the `Condition` on the group, the property and the `PackageReference` through **`ConditionEvaluator`** (a hand-written tokenizer + recursive-descent parser over `==`/`!=`/numeric comparisons/`And`/`Or`/`!`/parens/`Exists`/`HasTrailingSlash`). **`MSBuildProperties`** holds the values, expands `$(Name)`, and keeps global (`--property`) and reserved properties read-only so a `<PropertyGroup>` can't overwrite them. `PackageReference` is still matched by `LocalName` (namespace-agnostic), with the version as an attribute or a child element.
+   - A condition outside the supported subset (a property function, `@(...)`, `%(...)`) is **unevaluatable**, which logs once per condition per file and **keeps** the guarded items. Never make an unparseable condition drop packages.
+   - `<TargetFrameworks>` fans out: the project is evaluated once per TFM and the results are unioned (deduped on id + normalized version), so TFM-conditional references aren't lost. `ConditionEvaluator` deliberately does **not** short-circuit `And`/`Or` — that can only turn a condition unevaluatable, never flip a result.
+   - `Include`/`Version` go through `TryExpand`, which falls back to the **literal text** when a property is unknown, rather than substituting an empty string and silently discarding the reference.
+   - Still not supported: `Import`s, `Choose`/`When`, item groups inside a `Target`, and Central Package Management.
 4. **`ApplyInheritedPackages`** (in `SolutionInfoProvider`) — `Directory.Build.props` files are discovered by recursive directory walk from the solution folder, then each project is matched to the *longest matching directory prefix* (nearest ancestor). Those packages are appended to the project as `NuGetPackageReferenceType.Inherited`. Chained `Directory.Build.props` (via `Import`) is explicitly unsupported.
 5. **`PackagesAnalyzer`** — groups by package ID, keeps groups with more than one distinct version, then applies the `-p` / `-e` / `--excludedVersionsRegex` filters in that order.
 6. **`Logger`** — the only output path; `Console.WriteLine` throughout.
@@ -67,6 +71,8 @@ xUnit, in `src/DotNet.Consolidate.Tests`. Test data comes in two flavors and the
 
 - **Embedded resources** (`TestData/*.csproj`, `packages.config`, `Directory.build.props`) — read via `FileHelper.ReadResource(name)`, which prefixes `DotNet.Consolidate.Tests.TestData.`. Used for content-level parser tests.
 - **Copied to output** (`TestData/TestSolution/**`) — a real on-disk solution tree used by `SolutionParserTests` for end-to-end solution/`Directory.Build.props` resolution. New files here need an explicit `<None ... CopyToOutputDirectory="PreserveNewest">` entry in the test csproj; nothing is globbed.
+
+`TestData/**` is excluded from `Compile` in the test csproj. If a tool (Rider, an IDE restore) ever builds those sample projects, their generated `obj/**/*.cs` would otherwise be swept into the test assembly by the default glob and fail the build with `CS0579: Duplicate ... attribute`. If you hit that, delete the stray `obj` folders under `TestData/TestSolution`.
 
 Test method names are snake_case sentences (`Versions_with_trailing_zeroes_are_the_same`).
 
