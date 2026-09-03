@@ -90,6 +90,9 @@ namespace DotNet.Consolidate.Services
 
                 if (directoryBuildProps != null)
                 {
+                    projectInfo.DirectoryBuildPropsFile =
+                        Path.Combine(directoryBuildProps.DirectoryName, directoryBuildProps.FileName);
+
                     foreach (var packageReference in directoryBuildProps.Packages)
                     {
                         projectInfo.Packages.Add(

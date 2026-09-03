@@ -156,12 +156,19 @@ namespace DotNet.Consolidate
             var packageIdsNotFoundInSolution =
                 packagesAnalyzer.FindPackageIdsNotInSolution(solutionInfo.ProjectInfos, requestedPackageIds);
 
+            // With `-d false` there are no props files to inherit from, so this is empty either way and needs
+            // no case of its own.
+            var directoryBuildPropsOverrides = options.ReportOverridenDirectoryBuildProps ?? true
+                ? packagesAnalyzer.FindDirectoryBuildPropsOverrides(solutionInfo.ProjectInfos, options)
+                : new List<DirectoryBuildPropsOverride>();
+
             return new SolutionAnalysisResult(
                 solutionInfo.SolutionFile,
                 solutionInfo.IsParsedWithoutIssues,
                 nonConsolidatedPackages,
                 requestedPackageIds,
-                packageIdsNotFoundInSolution);
+                packageIdsNotFoundInSolution,
+                directoryBuildPropsOverrides);
         }
     }
 }

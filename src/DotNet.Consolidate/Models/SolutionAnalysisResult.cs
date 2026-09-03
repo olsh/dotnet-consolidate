@@ -16,13 +16,15 @@ namespace DotNet.Consolidate.Models
             bool isParsedWithoutIssues,
             IReadOnlyCollection<AnalysisResult> nonConsolidatedPackages,
             IReadOnlyCollection<string> requestedPackageIds,
-            IReadOnlyCollection<string> packageIdsNotFoundInSolution)
+            IReadOnlyCollection<string> packageIdsNotFoundInSolution,
+            IReadOnlyCollection<DirectoryBuildPropsOverride> directoryBuildPropsOverrides)
         {
             SolutionFile = solutionFile;
             IsParsedWithoutIssues = isParsedWithoutIssues;
             NonConsolidatedPackages = nonConsolidatedPackages;
             RequestedPackageIds = requestedPackageIds;
             PackageIdsNotFoundInSolution = packageIdsNotFoundInSolution;
+            DirectoryBuildPropsOverrides = directoryBuildPropsOverrides;
         }
 
         public string SolutionFile { get; }
@@ -44,5 +46,15 @@ namespace DotNet.Consolidate.Models
         /// Gets the <see cref="RequestedPackageIds"/> that no project in the solution references.
         /// </summary>
         public IReadOnlyCollection<string> PackageIdsNotFoundInSolution { get; }
+
+        /// <summary>
+        /// Gets the packages a project declares itself while also inheriting them from a
+        /// <c>Directory.Build.props</c>, empty when <c>-o</c> is off.
+        /// </summary>
+        /// <remarks>
+        /// Purely informational: unlike the collections above, these never fail the run. The option is on by
+        /// default, so exiting non-zero on them would turn green builds red on an upgrade nobody opted into.
+        /// </remarks>
+        public IReadOnlyCollection<DirectoryBuildPropsOverride> DirectoryBuildPropsOverrides { get; }
     }
 }

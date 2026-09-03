@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -56,12 +57,26 @@ namespace DotNet.Consolidate.Services
                         .ToList()))
                 .ToList();
 
+            // Ordered the same way as the text report, so the two agree on what "first" means.
+            var directoryBuildPropsOverrides = result.DirectoryBuildPropsOverrides
+                .OrderBy(o => o.PackageId, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(o => o.ProjectName)
+                .ThenBy(o => o.ProjectVersion)
+                .Select(o => new JsonDirectoryBuildPropsOverrideReport(
+                    o.PackageId,
+                    o.ProjectName,
+                    o.ProjectVersion.OriginalValue,
+                    o.DirectoryBuildPropsVersion.OriginalValue,
+                    o.DirectoryBuildPropsFile))
+                .ToList();
+
             _solutions.Add(
                 new JsonSolutionReport(
                     result.SolutionFile,
                     result.IsParsedWithoutIssues,
                     result.PackageIdsNotFoundInSolution.ToList(),
-                    packages));
+                    packages,
+                    directoryBuildPropsOverrides));
         }
 
         public void Flush()

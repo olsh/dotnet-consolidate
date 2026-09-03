@@ -32,12 +32,14 @@ namespace DotNet.Consolidate.Models
             string solutionFile,
             bool isParsedWithoutIssues,
             IReadOnlyCollection<string> packageIdsNotFound,
-            IReadOnlyCollection<JsonPackageReport> nonConsolidatedPackages)
+            IReadOnlyCollection<JsonPackageReport> nonConsolidatedPackages,
+            IReadOnlyCollection<JsonDirectoryBuildPropsOverrideReport> directoryBuildPropsOverrides)
         {
             SolutionFile = solutionFile;
             IsParsedWithoutIssues = isParsedWithoutIssues;
             PackageIdsNotFound = packageIdsNotFound;
             NonConsolidatedPackages = nonConsolidatedPackages;
+            DirectoryBuildPropsOverrides = directoryBuildPropsOverrides;
         }
 
         public string SolutionFile { get; }
@@ -47,6 +49,13 @@ namespace DotNet.Consolidate.Models
         public IReadOnlyCollection<string> PackageIdsNotFound { get; }
 
         public IReadOnlyCollection<JsonPackageReport> NonConsolidatedPackages { get; }
+
+        /// <summary>
+        /// Gets the packages a project declares itself while also inheriting them from a
+        /// <c>Directory.Build.props</c>, empty when <c>-o</c> is off. Informational — they don't affect the
+        /// exit code.
+        /// </summary>
+        public IReadOnlyCollection<JsonDirectoryBuildPropsOverrideReport> DirectoryBuildPropsOverrides { get; }
     }
 
     public class JsonPackageReport
@@ -73,5 +82,41 @@ namespace DotNet.Consolidate.Models
         public string ProjectName { get; }
 
         public string Version { get; }
+    }
+
+    public class JsonDirectoryBuildPropsOverrideReport
+    {
+        public JsonDirectoryBuildPropsOverrideReport(
+            string packageId,
+            string projectName,
+            string version,
+            string directoryBuildPropsVersion,
+            string directoryBuildPropsFile)
+        {
+            PackageId = packageId;
+            ProjectName = projectName;
+            Version = version;
+            DirectoryBuildPropsVersion = directoryBuildPropsVersion;
+            DirectoryBuildPropsFile = directoryBuildPropsFile;
+        }
+
+        public string PackageId { get; }
+
+        public string ProjectName { get; }
+
+        /// <summary>
+        /// Gets the version the project file declares.
+        /// </summary>
+        public string Version { get; }
+
+        /// <summary>
+        /// Gets the version the <c>Directory.Build.props</c> declares.
+        /// </summary>
+        public string DirectoryBuildPropsVersion { get; }
+
+        /// <summary>
+        /// Gets the full path of the props file that was overridden, empty when it isn't known.
+        /// </summary>
+        public string DirectoryBuildPropsFile { get; }
     }
 }

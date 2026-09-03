@@ -166,7 +166,8 @@ public class JsonOutputWriterTests
                 isParsedWithoutIssues: false,
                 new List<AnalysisResult>(),
                 new List<string>(),
-                new List<string>()));
+                new List<string>(),
+                new List<DirectoryBuildPropsOverride>()));
         writer.Flush();
 
         using var document = JsonDocument.Parse(output.ToString());
@@ -190,7 +191,8 @@ public class JsonOutputWriterTests
                 isParsedWithoutIssues: true,
                 new List<AnalysisResult>(),
                 new List<string> { "Serilog", "NotReferenced" },
-                new List<string> { "NotReferenced" }));
+                new List<string> { "NotReferenced" },
+                new List<DirectoryBuildPropsOverride>()));
         writer.Flush();
 
         using var document = JsonDocument.Parse(output.ToString());
@@ -203,6 +205,75 @@ public class JsonOutputWriterTests
         Assert.Equal("NotReferenced", missing.GetString());
     }
 
+    [Fact]
+    public void Directory_build_props_overrides_are_written_with_both_versions_and_the_props_file()
+    {
+        var output = new StringWriter();
+        var writer = new JsonOutputWriter(output, new List<string>());
+
+        writer.WriteAnalysisResults(
+            CreateResultWithOverrides(
+                "My.sln",
+                new DirectoryBuildPropsOverride(
+                    "ProjectB",
+                    "Serilog",
+                    new Version("4.0.0"),
+                    new Version("3.0.1"),
+                    @"C:\src\Directory.Build.props")));
+        writer.Flush();
+
+        using var document = JsonDocument.Parse(output.ToString());
+        var solution = Assert.Single(
+            document.RootElement.GetProperty("solutions")
+                .EnumerateArray());
+        var propsOverride = Assert.Single(
+            solution.GetProperty("directoryBuildPropsOverrides")
+                .EnumerateArray());
+
+        Assert.Equal(
+            "Serilog",
+            propsOverride.GetProperty("packageId")
+                .GetString());
+        Assert.Equal(
+            "ProjectB",
+            propsOverride.GetProperty("projectName")
+                .GetString());
+        Assert.Equal(
+            "4.0.0",
+            propsOverride.GetProperty("version")
+                .GetString());
+        Assert.Equal(
+            "3.0.1",
+            propsOverride.GetProperty("directoryBuildPropsVersion")
+                .GetString());
+        Assert.Equal(
+            @"C:\src\Directory.Build.props",
+            propsOverride.GetProperty("directoryBuildPropsFile")
+                .GetString());
+    }
+
+    [Fact]
+    public void Solution_without_overrides_is_written_with_an_empty_override_list()
+    {
+        var output = new StringWriter();
+        var writer = new JsonOutputWriter(output, new List<string>());
+
+        writer.WriteAnalysisResults(CreateResult("My.sln"));
+        writer.Flush();
+
+        var json = output.ToString();
+        Assert.Contains("\"directoryBuildPropsOverrides\"", json);
+        Assert.DoesNotContain("\"DirectoryBuildPropsOverrides\"", json);
+
+        using var document = JsonDocument.Parse(json);
+        Assert.Empty(
+            document.RootElement.GetProperty("solutions")
+                .EnumerateArray()
+                .Single()
+                .GetProperty("directoryBuildPropsOverrides")
+                .EnumerateArray());
+    }
+
     private static SolutionAnalysisResult CreateResult(string solutionFile, params AnalysisResult[] packages)
     {
         return new SolutionAnalysisResult(
@@ -210,7 +281,21 @@ public class JsonOutputWriterTests
             isParsedWithoutIssues: true,
             packages,
             new List<string>(),
-            new List<string>());
+            new List<string>(),
+            new List<DirectoryBuildPropsOverride>());
+    }
+
+    private static SolutionAnalysisResult CreateResultWithOverrides(
+        string solutionFile,
+        params DirectoryBuildPropsOverride[] overrides)
+    {
+        return new SolutionAnalysisResult(
+            solutionFile,
+            isParsedWithoutIssues: true,
+            new List<AnalysisResult>(),
+            new List<string>(),
+            new List<string>(),
+            overrides);
     }
 
     private static AnalysisResult CreatePackage(

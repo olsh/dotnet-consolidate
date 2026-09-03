@@ -9,6 +9,8 @@ namespace DotNet.Consolidate.Tests.Services;
 
 public class PackagesAnalyzerTests
 {
+    private const string PropsFile = @"C:\src\Directory.Build.props";
+
     [Fact]
     public void Versions_with_trailing_zeroes_are_the_same()
     {
@@ -138,6 +140,92 @@ public class PackagesAnalyzerTests
         Assert.Equal(new[] { "NotReferenced" }, result);
     }
 
+    [Fact]
+    public void A_package_declared_by_both_the_project_and_its_props_file_is_an_override()
+    {
+        var analyzer = new PackagesAnalyzer();
+
+        var result = analyzer.FindDirectoryBuildPropsOverrides(
+            new List<ProjectInfo> { CreateOverridingProject("Serilog", "4.0.0", "Serilog", "3.0.1") },
+            new Options());
+
+        var propsOverride = Assert.Single(result);
+        Assert.Equal("ProjectB", propsOverride.ProjectName);
+        Assert.Equal("Serilog", propsOverride.PackageId);
+        Assert.Equal("4.0.0", propsOverride.ProjectVersion.OriginalValue);
+        Assert.Equal("3.0.1", propsOverride.DirectoryBuildPropsVersion.OriginalValue);
+        Assert.Equal(PropsFile, propsOverride.DirectoryBuildPropsFile);
+    }
+
+    [Fact]
+    public void An_override_that_repeats_the_inherited_version_is_still_reported()
+    {
+        // Redeclaring the package is a duplicate item to MSBuild whatever the version, and the copy silently
+        // stops following the props file the next time it is bumped.
+        var analyzer = new PackagesAnalyzer();
+
+        var result = analyzer.FindDirectoryBuildPropsOverrides(
+            new List<ProjectInfo> { CreateOverridingProject("Serilog", "3.0.1", "Serilog", "3.0.1") },
+            new Options());
+
+        var propsOverride = Assert.Single(result);
+        Assert.Equal("3.0.1", propsOverride.ProjectVersion.OriginalValue);
+        Assert.Equal("3.0.1", propsOverride.DirectoryBuildPropsVersion.OriginalValue);
+    }
+
+    [Fact]
+    public void An_override_is_detected_when_the_two_package_ids_differ_only_in_case()
+    {
+        var analyzer = new PackagesAnalyzer();
+
+        var result = analyzer.FindDirectoryBuildPropsOverrides(
+            new List<ProjectInfo> { CreateOverridingProject("serilog", "4.0.0", "Serilog", "3.0.1") },
+            new Options());
+
+        var propsOverride = Assert.Single(result);
+
+        // The casing reported is the project's own, since that is the declaration being flagged.
+        Assert.Equal("serilog", propsOverride.PackageId);
+    }
+
+    [Fact]
+    public void A_package_only_inherited_or_only_declared_is_not_an_override()
+    {
+        var analyzer = new PackagesAnalyzer();
+
+        // Serilog only inherited, Moq only declared — neither is overridden by the other.
+        var result = analyzer.FindDirectoryBuildPropsOverrides(
+            new List<ProjectInfo> { CreateOverridingProject("Moq", "4.18.1", "Serilog", "3.0.1") },
+            new Options());
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void Overrides_are_filtered_by_the_same_package_id_options_as_the_consolidation_report()
+    {
+        var analyzer = new PackagesAnalyzer();
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateOverridingProject("Serilog", "4.0.0", "Serilog", "3.0.1")
+        };
+
+        Assert.Single(
+            analyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { PackageIds = new List<string> { "serilog" } }));
+
+        Assert.Empty(
+            analyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { PackageIds = new List<string> { "Moq" } }));
+
+        Assert.Empty(
+            analyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { ExcludedPackageIds = new List<string> { "serilog" } }));
+    }
+
     /// <summary>
     /// Two projects referencing <c>Serilog</c> at different versions, so it is not consolidated.
     /// </summary>
@@ -159,5 +247,32 @@ public class PackagesAnalyzerTests
             {
                 new NuGetPackageInfo(packageId, new Version(version), NuGetPackageReferenceType.Direct)
             });
+    }
+
+    /// <summary>
+    /// A project shaped the way <see cref="SolutionInfoProvider"/> leaves one that inherits from a
+    /// <c>Directory.Build.props</c>: its own references, plus the props file's appended as
+    /// <see cref="NuGetPackageReferenceType.Inherited"/>.
+    /// </summary>
+    private static ProjectInfo CreateOverridingProject(
+        string directPackageId,
+        string directVersion,
+        string inheritedPackageId,
+        string inheritedVersion)
+    {
+        return new ProjectInfo(
+            "ProjectB",
+            "ProjectB",
+            new List<NuGetPackageInfo>
+            {
+                new NuGetPackageInfo(directPackageId, new Version(directVersion), NuGetPackageReferenceType.Direct),
+                new NuGetPackageInfo(
+                    inheritedPackageId,
+                    new Version(inheritedVersion),
+                    NuGetPackageReferenceType.Inherited)
+            })
+        {
+            DirectoryBuildPropsFile = PropsFile
+        };
     }
 }
