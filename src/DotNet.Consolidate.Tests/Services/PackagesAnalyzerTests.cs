@@ -139,6 +139,50 @@ public class PackagesAnalyzerTests
     }
 
     [Fact]
+    public void Package_ids_given_with_e_narrow_the_ones_given_with_p()
+    {
+        // "My packages, except the internal ones" — the case that has no other spelling, and the reason
+        // giving both options at once stopped being rejected. `-p` selects, then `-e` subtracts from what
+        // it selected.
+        var options = new Options
+        {
+            PackageIds = new List<string> { "MyCompany.*" },
+            ExcludedPackageIds = new List<string> { "MyCompany.Logging" }
+        };
+
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options);
+
+        var analysisResult = Assert.Single(result);
+        Assert.Equal("MyCompany.Dal", analysisResult.NuGetPackageId);
+    }
+
+    [Fact]
+    public void Excluding_everything_that_p_matched_reports_nothing()
+    {
+        var options = new Options
+        {
+            PackageIds = new List<string> { "MyCompany.*" },
+            ExcludedPackageIds = new List<string> { "MyCompany.*" }
+        };
+
+        Assert.Empty(PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options));
+    }
+
+    [Fact]
+    public void Plain_package_ids_can_be_given_to_p_and_e_together()
+    {
+        // Two wildcard-free lists, where `-e` can only shorten `-p`: exactly the command line the tool
+        // used to reject as senseless. It says nothing a shorter `-p` wouldn't, but it isn't an error.
+        var options = new Options
+        {
+            PackageIds = new List<string> { "Serilog" },
+            ExcludedPackageIds = new List<string> { "Serilog" }
+        };
+
+        Assert.Empty(PackagesAnalyzer.FindNonConsolidatedPackages(CreateSerilogProjects(), options));
+    }
+
+    [Fact]
     public void A_wildcard_pattern_that_matches_a_package_is_not_reported_as_missing()
     {
         // The invariant that forced the pattern into FindPackageIdsNotInSolution as well: an entry the
@@ -178,6 +222,29 @@ public class PackagesAnalyzerTests
             PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
                 projectInfos,
                 new Options { ExcludedPackageIds = new List<string> { "MyCompany.*" } }));
+    }
+
+    [Fact]
+    public void Overrides_are_filtered_by_both_package_id_options_at_once()
+    {
+        // The override report shares FilterByPackageId with the consolidation report, so the two options
+        // have to combine here the same way. Pairing them is what keeps the reports from drifting.
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateOverridingProject("MyCompany.Dal", "4.0.0", "MyCompany.Dal", "3.0.1"),
+            CreateOverridingProject("MyCompany.Logging", "4.0.0", "MyCompany.Logging", "3.0.1")
+        };
+
+        var result = PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+            projectInfos,
+            new Options
+            {
+                PackageIds = new List<string> { "MyCompany.*" },
+                ExcludedPackageIds = new List<string> { "MyCompany.Logging" }
+            });
+
+        var reportedOverride = Assert.Single(result);
+        Assert.Equal("MyCompany.Dal", reportedOverride.PackageId);
     }
 
     [Fact]

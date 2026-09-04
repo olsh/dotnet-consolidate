@@ -212,6 +212,23 @@ public class SolutionAnalyzerTests
     }
 
     [Fact]
+    public void Package_ids_that_e_filters_out_are_still_found_in_the_solution()
+    {
+        // The missing-ID check deliberately consults only `-p`: it asks whether the entry names a package
+        // anything references, which is a typo check, and an entry the user then excluded on purpose was
+        // still found. Feeding `-e` into it would fail runs that asked for exactly this.
+        var result = AnalyzeAcross(
+            new Options
+            {
+                PackageIds = new List<string> { "Serilog" },
+                ExcludedPackageIds = new List<string> { "Serilog" }
+            },
+            ("cms.sln", CreateProject("ProjectA", Dir("cms", "ProjectA"), "Serilog", "1.0.0")));
+
+        Assert.Empty(result.PackageIdsNotFoundInSolution);
+    }
+
+    [Fact]
     public void Directory_build_props_overrides_are_collected_from_every_solution()
     {
         var result = AnalyzeAcross(

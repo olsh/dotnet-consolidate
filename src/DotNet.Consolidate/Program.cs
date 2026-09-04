@@ -71,15 +71,6 @@ namespace DotNet.Consolidate
             ILogger logger = options.Format == OutputFormat.Json ? collectingLogger : new Logger();
             var outputWriter = OutputWriterFactory.Create(options.Format, Console.Out, collectingLogger.Messages);
 
-            if (options.ExcludedPackageIds?.Any() == true && options.PackageIds?.Any() == true)
-            {
-                logger.Message("There is no sense to provide both `-p` and `-e` arguments at the same time.");
-                outputWriter.Flush();
-                Environment.ExitCode = 1;
-
-                return;
-            }
-
             var (isSuccess, globalProperties) = TryParseGlobalProperties(options.GlobalProperties, logger);
             if (!isSuccess)
             {

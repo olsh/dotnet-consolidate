@@ -68,7 +68,7 @@ Alternatively, you can configure the opposite, package IDs that should be skippe
 
 `dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
 
-Both options match package IDs case-insensitively, the way NuGet itself treats them, so `-p serilog` matches a `Serilog` reference. The two can't be combined in one run.
+Both options match package IDs case-insensitively, the way NuGet itself treats them, so `-p serilog` matches a `Serilog` reference.
 
 Either option also takes wildcards, so a whole family of packages can be named at once — `*` stands for any run of characters and `?` for exactly one:
 
@@ -79,6 +79,12 @@ That checks `MyCompany.Dal`, `MyCompany.Logging` and every other package whose I
 Quote the pattern. In POSIX shells an unquoted `*` is left alone only while nothing in the working directory happens to match it, so `-p MyCompany.*` can silently turn into a list of file names. PowerShell doesn't expand arguments and needs no quotes, but they do no harm.
 
 An entry without a wildcard is still matched in full: `-p Serilog` does not check `Serilog.Sinks.Console`.
+
+The two options can be given together, and `-e` applies to what `-p` selected — which is how you check a family of packages apart from a branch of it:
+
+`dotnet consolidate -s YourSolution.sln -p "MyCompany.*" -e "MyCompany.Internal.*"`
+
+Excluding a package doesn't hide it from the "not referenced by any project" check below, which is only ever about `-p`: excluding everything `-p` matched checks nothing and still exits successfully, while a `-p` entry that matches no package in the solution keeps failing the run.
 
 It's also possible to skip a pattern of versions during consolidation with a regular expression:
 
