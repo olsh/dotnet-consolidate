@@ -42,10 +42,20 @@ namespace DotNet.Consolidate.Models
                 "Analyze the given solutions as one set, so a package referenced at different versions by projects in different solutions is reported too.")]
         public bool CrossSolution { get; init; }
 
-        [Option('p', "packageIds", Required = false, HelpText = "Package IDs for checking.")]
+        [Option(
+            'p',
+            "packageIds",
+            Required = false,
+            HelpText =
+                "Package IDs for checking. Wildcards are supported, * for any run of characters and ? for exactly one, e.g. -p MyCompany.*")]
         public ICollection<string>? PackageIds { get; init; }
 
-        [Option('e', "excluded", Required = false, HelpText = "Package IDs that will be skipped during checking.")]
+        [Option(
+            'e',
+            "excluded",
+            Required = false,
+            HelpText =
+                "Package IDs that will be skipped during checking. Wildcards are supported, e.g. -e MyCompany.*")]
         public ICollection<string>? ExcludedPackageIds { get; init; }
 
         [Option(

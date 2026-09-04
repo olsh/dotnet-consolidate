@@ -94,6 +94,93 @@ public class PackagesAnalyzerTests
     }
 
     [Fact]
+    public void Package_ids_given_with_p_can_be_a_wildcard_pattern()
+    {
+        var options = new Options { PackageIds = new List<string> { "MyCompany.*" } };
+
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options);
+
+        Assert.Equal(
+            new[] { "MyCompany.Dal", "MyCompany.Logging" },
+            result.Select(r => r.NuGetPackageId)
+                .OrderBy(id => id));
+    }
+
+    [Fact]
+    public void Package_ids_given_with_e_can_be_a_wildcard_pattern()
+    {
+        var options = new Options { ExcludedPackageIds = new List<string> { "MyCompany.*" } };
+
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options);
+
+        var analysisResult = Assert.Single(result);
+        Assert.Equal("Moq", analysisResult.NuGetPackageId);
+    }
+
+    [Fact]
+    public void A_wildcard_pattern_is_matched_case_insensitively()
+    {
+        var options = new Options { PackageIds = new List<string> { "mycompany.dal*" } };
+
+        var result = PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options);
+
+        var analysisResult = Assert.Single(result);
+        Assert.Equal("MyCompany.Dal", analysisResult.NuGetPackageId);
+    }
+
+    [Fact]
+    public void A_package_id_without_a_wildcard_still_has_to_match_in_full()
+    {
+        // Guards against the filter quietly becoming a prefix match: `MyCompany` names no package here,
+        // however many packages start with it.
+        var options = new Options { PackageIds = new List<string> { "MyCompany" } };
+
+        Assert.Empty(PackagesAnalyzer.FindNonConsolidatedPackages(CreateMyCompanyProjects(), options));
+    }
+
+    [Fact]
+    public void A_wildcard_pattern_that_matches_a_package_is_not_reported_as_missing()
+    {
+        // The invariant that forced the pattern into FindPackageIdsNotInSolution as well: an entry the
+        // filter accepts must never also be reported as missing, which would fail the run.
+        var result = PackagesAnalyzer.FindPackageIdsNotInSolution(
+            CreateMyCompanyProjects(),
+            new List<string> { "MyCompany.*" });
+
+        Assert.Empty(result);
+    }
+
+    [Fact]
+    public void A_wildcard_pattern_that_matches_nothing_is_reported_as_missing()
+    {
+        var result = PackagesAnalyzer.FindPackageIdsNotInSolution(
+            new List<ProjectInfo> { CreateProject("ProjectA", "Serilog", "1.0.0") },
+            new List<string> { "MyCompany.*" });
+
+        // Echoed back as the user typed it, the same as a plain ID that names nothing.
+        Assert.Equal(new[] { "MyCompany.*" }, result);
+    }
+
+    [Fact]
+    public void Overrides_are_filtered_by_a_wildcard_pattern_too()
+    {
+        var projectInfos = new List<ProjectInfo>
+        {
+            CreateOverridingProject("MyCompany.Dal", "4.0.0", "MyCompany.Dal", "3.0.1")
+        };
+
+        Assert.Single(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { PackageIds = new List<string> { "MyCompany.*" } }));
+
+        Assert.Empty(
+            PackagesAnalyzer.FindDirectoryBuildPropsOverrides(
+                projectInfos,
+                new Options { ExcludedPackageIds = new List<string> { "MyCompany.*" } }));
+    }
+
+    [Fact]
     public void Packages_differing_only_in_case_are_the_same_package()
     {
         // NuGet package IDs are case-insensitive, so this is one package at two versions, not two packages
@@ -446,13 +533,35 @@ public class PackagesAnalyzerTests
 
     private static ProjectInfo CreateProject(string projectName, string packageId, string version)
     {
+        return CreateProject(projectName, (packageId, version));
+    }
+
+    private static ProjectInfo CreateProject(
+        string projectName,
+        params (string PackageId, string Version)[] packages)
+    {
         return new ProjectInfo(
             projectName,
             projectName,
-            new List<NuGetPackageInfo>
-            {
-                new NuGetPackageInfo(packageId, new Version(version), NuGetPackageReferenceType.Direct)
-            });
+            packages
+                .Select(package => new NuGetPackageInfo(
+                    package.PackageId,
+                    new Version(package.Version),
+                    NuGetPackageReferenceType.Direct))
+                .ToList());
+    }
+
+    /// <summary>
+    /// Two projects disagreeing about <c>MyCompany.Dal</c>, <c>MyCompany.Logging</c> and <c>Moq</c>, so all
+    /// three are non-consolidated and a filter is the only thing that can tell them apart.
+    /// </summary>
+    private static List<ProjectInfo> CreateMyCompanyProjects()
+    {
+        return new List<ProjectInfo>
+        {
+            CreateProject("ProjectA", ("MyCompany.Dal", "1.0.0"), ("MyCompany.Logging", "1.0.0"), ("Moq", "4.18.1")),
+            CreateProject("ProjectB", ("MyCompany.Dal", "2.0.0"), ("MyCompany.Logging", "2.0.0"), ("Moq", "4.20.0"))
+        };
     }
 
     /// <summary>

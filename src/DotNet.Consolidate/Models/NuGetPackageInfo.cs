@@ -17,9 +17,10 @@ namespace DotNet.Consolidate.Models
         /// </summary>
         /// <remarks>
         /// Every package ID comparison in the tool goes through this one so they cannot drift apart: the
-        /// grouping, the <c>-p</c>/<c>-e</c> filters and the "not found in the solution" check in
-        /// <see cref="Services.PackagesAnalyzer"/>, and the <c>Update</c>/<c>Remove</c> matching in
-        /// <see cref="Services.ProjectEvaluator"/>. It lives here rather than in one of them because it is a
+        /// grouping in <see cref="Services.PackagesAnalyzer"/>, the <c>Update</c>/<c>Remove</c> matching in
+        /// <see cref="Services.ProjectEvaluator"/>, and — for an entry without a wildcard — the
+        /// <c>-p</c>/<c>-e</c> filters and the "not found in the solution" check, which reach it through
+        /// <see cref="Services.PackageIdPattern"/>. It lives here rather than in one of them because it is a
         /// property of the ID itself, and the two sides must never disagree about which IDs are the same.
         /// </remarks>
         public static StringComparer IdComparer => StringComparer.OrdinalIgnoreCase;
