@@ -47,7 +47,7 @@ namespace DotNet.Consolidate.Models
             "packageIds",
             Required = false,
             HelpText =
-                "Package IDs for checking. Wildcards are supported, * for any run of characters and ? for exactly one, e.g. -p MyCompany.*")]
+                "Package IDs for checking. Wildcards are supported, * for any run of characters and ? for exactly one, e.g. -p \"MyCompany.*\" -- quote the pattern so the shell doesn't expand it")]
         public ICollection<string>? PackageIds { get; init; }
 
         [Option(
@@ -55,7 +55,7 @@ namespace DotNet.Consolidate.Models
             "excluded",
             Required = false,
             HelpText =
-                "Package IDs that will be skipped during checking. Wildcards are supported, e.g. -e MyCompany.*")]
+                "Package IDs that will be skipped during checking. Wildcards are supported, e.g. -e \"MyCompany.*\"")]
         public ICollection<string>? ExcludedPackageIds { get; init; }
 
         [Option(
