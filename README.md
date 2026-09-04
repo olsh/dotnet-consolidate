@@ -66,13 +66,13 @@ dotnet consolidate -s Cms.sln TheSite.sln -c
 
 Output when everything agrees:
 
-```
+```text
 All packages in YourSolution.sln are consolidated.
 ```
 
 and when it doesn't:
 
-```
+```text
 Found 2 non-consolidated packages
 
 ----------------------------
@@ -133,7 +133,7 @@ Packages declared in a `Directory.Build.props` count as references of every proj
 
 When a project declares a package that its `Directory.Build.props` already declares, the project file wins and the central version stops applying to it. `-o` reports that, with both versions and the props file to go and change:
 
-```
+```text
 Found 1 Directory.Build.props overrides
 
 ----------------------------
@@ -192,7 +192,7 @@ The supported part of the condition language is `==`, `!=`, numeric comparisons,
 
 ## JSON output
 
-`-f json` prints a single JSON document to stdout and nothing else. Progress messages are suppressed rather than moved to stderr, so `dotnet consolidate -f json | ConvertFrom-Json` works and CI systems that treat any stderr output as a failure stay happy. Anything the tool would have reported along the way (a project that couldn't be parsed, a condition it couldn't evaluate) is carried in `warnings`. Exit codes are the same as for the text format.
+`-f json` prints a single JSON document to stdout and nothing else. Progress messages are suppressed rather than moved to stderr, so `dotnet consolidate -f json | ConvertFrom-Json` works and CI systems that treat any stderr output as a failure stay happy. The one exception is a command line the parser rejects, whose complaint reaches stderr before any of this — that run fails on its exit code anyway. Anything the tool would have reported along the way (a project that couldn't be parsed, a condition it couldn't evaluate) is carried in `warnings`. Exit codes are the same as for the text format.
 
 ```json
 {
