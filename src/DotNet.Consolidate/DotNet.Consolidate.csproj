@@ -21,7 +21,7 @@
     <PackageReleaseNotes>https://github.com/olsh/dotnet-consolidate/releases</PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/olsh/dotnet-consolidate</PackageProjectUrl>
     <RepositoryUrl>https://github.com/olsh/dotnet-consolidate</RepositoryUrl>
-    <license>https://raw.githubusercontent.com/olsh/dotnet-consolidate/master/LICENSE</license>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
