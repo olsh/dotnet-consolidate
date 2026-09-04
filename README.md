@@ -68,7 +68,17 @@ Alternatively, you can configure the opposite, package IDs that should be skippe
 
 `dotnet consolidate -s YourSolution.sln -e ExcludedPackageID1 ExcludedPackageID2`
 
-Both options match package IDs case-insensitively, the way NuGet itself treats them, so `-p serilog` matches a `Serilog` reference.
+Both options match package IDs case-insensitively, the way NuGet itself treats them, so `-p serilog` matches a `Serilog` reference. The two can't be combined in one run.
+
+Either option also takes wildcards, so a whole family of packages can be named at once — `*` stands for any run of characters and `?` for exactly one:
+
+`dotnet consolidate -s YourSolution.sln -p "MyCompany.*"`
+
+That checks `MyCompany.Dal`, `MyCompany.Logging` and every other package whose ID starts with `MyCompany.`, without having to list them or come back and edit the command line when a new one is added. `-e "MyCompany.*"` is the opposite, skipping all of them.
+
+Quote the pattern. In POSIX shells an unquoted `*` is left alone only while nothing in the working directory happens to match it, so `-p MyCompany.*` can silently turn into a list of file names. PowerShell doesn't expand arguments and needs no quotes, but they do no harm.
+
+An entry without a wildcard is still matched in full: `-p Serilog` does not check `Serilog.Sinks.Console`.
 
 It's also possible to skip a pattern of versions during consolidation with a regular expression:
 
@@ -114,7 +124,7 @@ Both only act on packages the project inherits, so `-d false` leaves them with n
 
 If the tool finds discrepancies between projects (only the specified ones if -p is given), it exits with non-success status code and prints these discrepancies. With `-c` the projects compared are those of every given solution, so a disagreement *between* two solutions fails the run just as one inside a single solution does.
 
-A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed.
+A package ID passed to `-p` that no project in the solution references is also reported and also exits with a non-success status code — that is almost always a typo, and exiting successfully would let it pass a build unnoticed. A wildcard pattern that matches nothing is treated the same way and for the same reason: `-p "MyCompnay.*"` has checked exactly nothing, so it must not pass the build.
 
 A command line the tool can't parse — an unknown option, or one repeated where it takes a space-separated list — exits with a non-success status code too, for the same reason: nothing was checked, so a green build would be a lie. The complaint is written to stderr. `--help` and `--version` are requests that were satisfied, not failures, and still exit successfully.
 

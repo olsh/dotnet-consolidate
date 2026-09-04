@@ -16,10 +16,13 @@ namespace DotNet.Consolidate.Services
     public static class PackagesAnalyzer
     {
         // NuGet package IDs are case-insensitive, so `Serilog` and `serilog` are the same package — when
-        // grouping, when filtering with `-p`/`-e`, when deciding a `-p` ID isn't in the solution, and when an
-        // `Update`/`Remove` decides which reference it names. Every package ID comparison in the tool goes
-        // through this one comparer so they can't drift apart; it lives on the model because `ProjectEvaluator`
-        // needs it too.
+        // grouping, when deduplicating the solution's IDs, and when an `Update`/`Remove` decides which
+        // reference it names. Every package ID comparison in the tool goes through this one comparer so they
+        // can't drift apart; it lives on the model because `ProjectEvaluator` needs it too.
+        //
+        // The `-p`/`-e` filters and the "not in the solution" check reach it through `PackageIdPattern`
+        // instead, since their entries may be wildcard patterns. An entry without a wildcard is still
+        // answered by this comparer, so a command line of plain IDs is matched exactly as it always was.
         private static readonly StringComparer PackageIdComparer = NuGetPackageInfo.IdComparer;
 
         /// <summary>
@@ -257,14 +260,17 @@ namespace DotNet.Consolidate.Services
         }
 
         /// <summary>
-        /// The <c>-p</c> package IDs that no project in the solution references.
+        /// The <c>-p</c> entries that name no package any project in the solution references.
         /// </summary>
         /// <remarks>
-        /// Lives next to the filters above so it uses the same <see cref="PackageIdComparer"/>: an ID the
-        /// filters accept must never be reported as missing, and the other way round. It reads the effective
-        /// packages for the same reason — a package every project removes really is not in the solution.
+        /// Lives next to the filters above so it decides what an entry names through the same
+        /// <see cref="PackageIdPattern"/>: an entry the filters accept must never be reported as missing, and
+        /// the other way round. That is why a wildcard had to reach this method too — left as an exact
+        /// lookup, <c>-p MyCompany.*</c> would have filtered the report correctly and been reported as
+        /// missing at the same time, failing the run. It reads the effective packages for the same reason a
+        /// filter does — a package every project removes really is not in the solution.
         /// </remarks>
-        /// <returns>The requested IDs as the user typed them, so the report echoes back their casing.</returns>
+        /// <returns>The entries as the user typed them, so the report echoes back their casing.</returns>
         public static List<string> FindPackageIdsNotInSolution(
             ICollection<ProjectInfo> projectInfos,
             IReadOnlyCollection<string> requestedPackageIds)
@@ -274,16 +280,41 @@ namespace DotNet.Consolidate.Services
                     .Select(package => package.Id)),
                 PackageIdComparer);
 
-            return requestedPackageIds.Where(id => !solutionPackageIds.Contains(id))
+            return requestedPackageIds
+                .Where(requestedPackageId => !IsReferencedBySolution(requestedPackageId, solutionPackageIds))
                 .ToList();
+        }
+
+        /// <remarks>
+        /// One entry at a time, because the report names the entries that found nothing and a matcher built
+        /// from all of them could only say that <i>something</i> matched. A plain ID could have been the
+        /// <see cref="HashSet{T}"/> lookup this used to be and deliberately isn't: going through
+        /// <see cref="PackageIdPattern"/> is what guarantees this check answers exactly what the filter
+        /// answers, which is the whole reason it lives in this class. The scan is over the solution's
+        /// distinct IDs, not its references, and stops at the first match.
+        /// </remarks>
+        private static bool IsReferencedBySolution(
+            string requestedPackageId,
+            IEnumerable<string> solutionPackageIds)
+        {
+            return solutionPackageIds.Any(packageId => PackageIdPattern.IsMatch(requestedPackageId, packageId));
         }
 
         /// <summary>
         /// Applies the <c>-p</c> and <c>-e</c> package ID filters, in that order.
         /// </summary>
         /// <remarks>
-        /// Shared by every report so the two filters can't drift apart, and so both go through
-        /// <see cref="PackageIdComparer"/> the way the class comment promises.
+        /// <para>
+        /// Shared by every report so the two filters can't drift apart, and so both decide what an entry
+        /// names the one way, through <see cref="PackageIdPattern"/> — which answers an entry without a
+        /// wildcard with <see cref="PackageIdComparer"/>, so a command line of plain IDs is matched exactly
+        /// as it was before patterns existed.
+        /// </para>
+        /// <para>
+        /// The guards stay here rather than moving into the matcher, because they are what decides the
+        /// meaning of "the option wasn't given" — and the two options mean the opposite by it: nothing given
+        /// to <c>-p</c> is <i>every</i> package, nothing given to <c>-e</c> is none of them.
+        /// </para>
         /// </remarks>
         private static IEnumerable<T> FilterByPackageId<T>(
             IEnumerable<T> items,
@@ -292,15 +323,15 @@ namespace DotNet.Consolidate.Services
         {
             if (options.PackageIds?.Any() == true)
             {
-                var requestedPackageIds = new HashSet<string>(options.PackageIds, PackageIdComparer);
-                items = items.Where(item => requestedPackageIds.Contains(packageId(item)))
+                var requestedPackageIds = options.PackageIds.ToList();
+                items = items.Where(item => PackageIdPattern.IsMatchAny(requestedPackageIds, packageId(item)))
                     .ToList();
             }
 
             if (options.ExcludedPackageIds?.Any() == true)
             {
-                var excludedPackageIds = new HashSet<string>(options.ExcludedPackageIds, PackageIdComparer);
-                items = items.Where(item => !excludedPackageIds.Contains(packageId(item)))
+                var excludedPackageIds = options.ExcludedPackageIds.ToList();
+                items = items.Where(item => !PackageIdPattern.IsMatchAny(excludedPackageIds, packageId(item)))
                     .ToList();
             }
 
