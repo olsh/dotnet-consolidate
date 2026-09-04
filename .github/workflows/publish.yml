@@ -1,0 +1,62 @@
+name: Publish to NuGet
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: true
+
+jobs:
+  publish:
+    name: Publish to NuGet
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Test and pack
+        run: ./build.sh test nuget-pack --configuration Release
+
+      - name: Upload NuGet package
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-package
+          path: artifacts/*.nupkg
+          if-no-files-found: error
+
+      - name: NuGet login (OIDC -> temp API key)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: NuGet push
+        shell: pwsh
+        run: |
+          $packages = Get-ChildItem -Path artifacts/*.nupkg
+          if ($packages.Count -ne 1) {
+            throw "Expected exactly 1 package, found $($packages.Count)"
+          }
+          dotnet nuget push $packages[0].FullName --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
